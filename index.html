@@ -9,39 +9,21 @@
   <title>TourDesk Pro</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
   <style>
     *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
-    html,body{width:100%;height:100%;overflow-x:hidden}
-    body{font-family:system-ui,-apple-system,sans-serif;overscroll-behavior:none;transition:background .2s}
-    #root{height:100dvh;width:100%;display:flex;flex-direction:column}
-    .light{background:#f8f9fa}
-    .dark{background:#0d0d0d}
-    ::-webkit-scrollbar{width:0;background:transparent}
+    html,body{width:100%;height:100%;overflow:hidden}
+    body{font-family:system-ui,-apple-system,sans-serif;background:#f8f9fa}
+    #root{height:100dvh;display:flex;flex-direction:column}
+    ::-webkit-scrollbar{width:0}
     @keyframes bounce{0%,80%,100%{transform:translateY(0);opacity:.4}40%{transform:translateY(-5px);opacity:1}}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    .spinner{width:32px;height:32px;border:3px solid #f3f4f6;border-top-color:#E24B4A;border-radius:50%;animation:spin .7s linear infinite;margin:0 auto}
   </style>
 </head>
-<body class="light">
-<div id="root"></div>
-<script type="text/babel">
-const {useState,useMemo,useRef,useEffect} = React;
-const e = React.createElement;
-
-/* ── THEME ── */
-const useTheme=()=>{
-  const [dark,setDark]=useState(()=>localStorage.getItem('td_dark')==='1');
-  useEffect(()=>{ document.body.className=dark?'dark':'light'; localStorage.setItem('td_dark',dark?'1':'0'); },[dark]);
-  return [dark,()=>setDark(d=>!d)];
-};
-const C=(dark)=>({
-  bg:dark?'#0d0d0d':'#f8f9fa', surface:dark?'#1a1a1a':'#ffffff',
-  surface2:dark?'#222':'#f3f4f6', border:dark?'#2a2a2a':'#f3f4f6',
-  border2:dark?'#333':'#e5e7eb', text:dark?'#f0f0f0':'#111111',
-  text2:dark?'#888':'#6b7280', text3:dark?'#555':'#9ca3af',
-  header:dark?'#000':'#111', tabBar:dark?'#111':'#ffffff',
-});
-
-/* ── DATA ── */
+<body>
+<div id="root"><div style="display:flex;align-items:center;justify-content:center;height:100dvh;flex-direction:column;gap:16px"><div class="spinner"></div><div style="font-size:13px;color:#9ca3af">Cargando TourDesk Pro...</div></div></div>
+<script>
+// ── DATA ──────────────────────────────────────────────────────
 const TEAM=[
   {id:"yo",name:"Yo (FOH)",        initials:"YO",color:"#E24B4A",bg:"#FCEBEB"},
   {id:"w1",name:"Andrés Hernández",initials:"AH",color:"#185FA5",bg:"#E6F1FB"},
@@ -52,335 +34,449 @@ const ARTISTS={
   beele:{name:"Beele",    color:"#0F6E56",bg:"#E1F5EE",short:"BE"},
   hades:{name:"Hades 66", color:"#7C3AED",bg:"#EDE9FE",short:"H6"},
 };
-const SHOWS=[
-  {id:1, date:"2025-06-23",artist:"luar", venue:"Beach Club Medusa",      city:"Cullera",             status:"confirmed",assigned:["yo"],notes:""},
-  {id:2, date:"2025-06-25",artist:"luar", venue:"Shoko",                  city:"Barcelona",            status:"confirmed",assigned:["yo"],notes:""},
-  {id:3, date:"2025-06-26",artist:"luar", venue:"Santana 27",             city:"Bilbao",               status:"confirmed",assigned:["yo"],notes:""},
-  {id:4, date:"2025-06-27",artist:"luar", venue:"Big Ben",                city:"Lleida",               status:"confirmed",assigned:["yo"],notes:""},
-  {id:5, date:"2025-06-28",artist:"luar", venue:"Fitz",                   city:"Marbella",             status:"confirmed",assigned:["yo"],notes:""},
-  {id:6, date:"2025-07-02",artist:"luar", venue:"Shoko",                  city:"Madrid",               status:"confirmed",assigned:["w1"],notes:""},
-  {id:7, date:"2025-07-03",artist:"luar", venue:"Momart",                 city:"Cádiz",                status:"confirmed",assigned:["w1"],notes:""},
-  {id:8, date:"2025-07-05",artist:"luar", venue:"RBF",                    city:"Alicante",             status:"confirmed",assigned:["w1"],notes:""},
-  {id:9, date:"2025-07-07",artist:"luar", venue:"Amok",                   city:"Mallorca",             status:"confirmed",assigned:["w1"],notes:""},
-  {id:10,date:"2025-07-08",artist:"luar", venue:"Cosa Nuestra",           city:"Málaga",               status:"confirmed",assigned:["w1"],notes:""},
-  {id:11,date:"2025-07-09",artist:"luar", venue:"Velice",                 city:"Torrevieja",           status:"confirmed",assigned:["w1"],notes:""},
-  {id:12,date:"2025-07-10",artist:"luar", venue:"Noura",                  city:"Sevilla",              status:"confirmed",assigned:["w1"],notes:""},
-  {id:13,date:"2025-07-11",artist:"luar", venue:"Plaza de Toros",         city:"Melilla",              status:"confirmed",assigned:["w1"],notes:""},
-  {id:14,date:"2025-07-12",artist:"luar", venue:"Live",                   city:"Punta Umbría",         status:"confirmed",assigned:["w1"],notes:""},
-  {id:15,date:"2025-07-15",artist:"luar", venue:"Cortijo Los Canos",      city:"Sotogrande",           status:"confirmed",assigned:["w1"],notes:""},
-  {id:16,date:"2025-07-18",artist:"luar", venue:"TBC",                    city:"—",                    status:"tbc",      assigned:["w1"],notes:""},
-  {id:17,date:"2025-07-19",artist:"luar", venue:"TBC",                    city:"—",                    status:"tbc",      assigned:["w1"],notes:""},
-  {id:18,date:"2025-07-24",artist:"luar", venue:"Ku",                     city:"Benidorm",             status:"confirmed",assigned:["w1"],notes:""},
-  {id:19,date:"2025-07-25",artist:"luar", venue:"Festival ZEVR",          city:"Cullera",              status:"confirmed",assigned:["w1"],notes:""},
-  {id:20,date:"2025-07-28",artist:"luar", venue:"TBC",                    city:"—",                    status:"tbc",      assigned:["w1"],notes:""},
-  {id:21,date:"2025-07-29",artist:"luar", venue:"Condado",                city:"Dénia",                status:"confirmed",assigned:["w1"],notes:""},
-  {id:22,date:"2025-07-31",artist:"luar", venue:"Albariño",               city:"Cambados",             status:"confirmed",assigned:["w1"],notes:""},
-  {id:23,date:"2025-08-01",artist:"luar", venue:"Festival Mediterránea",  city:"Girona",               status:"confirmed",assigned:["w1"],notes:""},
-  {id:24,date:"2025-07-02",artist:"beele",venue:"Pacha Disco Club",       city:"Ibiza",                status:"confirmed",assigned:["yo"],notes:""},
-  {id:25,date:"2025-07-04",artist:"beele",venue:"Latin Fest: Mora y Turizo",city:"Benidorm",           status:"confirmed",assigned:["yo"],notes:""},
-  {id:26,date:"2025-07-05",artist:"beele",venue:"Praia do Aterro",        city:"Lisboa",               status:"confirmed",assigned:["yo"],notes:""},
-  {id:27,date:"2025-07-09",artist:"beele",venue:"Reggaeton Nigh",         city:"Zúrich",               status:"confirmed",assigned:["yo"],notes:""},
-  {id:28,date:"2025-07-10",artist:"beele",venue:"Movistar Arena · Farruko",city:"Madrid",              status:"confirmed",assigned:["yo"],notes:""},
-  {id:29,date:"2025-07-11",artist:"beele",venue:"Movistar Arena · Farruko",city:"Madrid",              status:"tbc",      assigned:["yo"],notes:""},
-  {id:30,date:"2025-07-12",artist:"beele",venue:"Parque Hermanos Castro", city:"Gijón",                status:"confirmed",assigned:["yo"],notes:""},
-  {id:31,date:"2025-07-15",artist:"beele",venue:"Milan Latin Fest",       city:"Milán",                status:"confirmed",assigned:["yo"],notes:""},
-  {id:32,date:"2025-07-17",artist:"beele",venue:"Latin Fest Valencia",    city:"Valencia",             status:"confirmed",assigned:["yo"],notes:""},
-  {id:33,date:"2025-07-18",artist:"beele",venue:"Recinto Ferial",         city:"Vera, Almería",        status:"confirmed",assigned:["yo"],notes:""},
-  {id:34,date:"2025-07-23",artist:"beele",venue:"Estadio Olímpico · Don Omar",city:"Barcelona",        status:"confirmed",assigned:["yo"],notes:""},
-  {id:35,date:"2025-07-24",artist:"beele",venue:"Anexo GranCa · Farruko", city:"Gran Canaria",         status:"confirmed",assigned:["yo"],notes:""},
-  {id:36,date:"2025-07-25",artist:"beele",venue:"El Muelle · Yandel",     city:"Tenerife",             status:"confirmed",assigned:["yo"],notes:""},
-  {id:37,date:"2025-07-26",artist:"beele",venue:"Urban Paradise · Omar Courtz",city:"Málaga",          status:"confirmed",assigned:["yo"],notes:""},
-  {id:38,date:"2025-07-10",artist:"hades",venue:"White Beach",            city:"Huelva",               status:"confirmed",assigned:["w2"],notes:""},
-  {id:39,date:"2025-07-11",artist:"hades",venue:"RBF",                    city:"Santander",            status:"tbc",      assigned:["w2"],notes:""},
-  {id:40,date:"2025-07-12",artist:"hades",venue:"Fitz",                   city:"Marbella",             status:"confirmed",assigned:["w2"],notes:""},
-  {id:41,date:"2025-07-15",artist:"hades",venue:"Fitz",                   city:"Madrid",               status:"confirmed",assigned:["w2"],notes:""},
-  {id:42,date:"2025-07-16",artist:"hades",venue:"Shoko",                  city:"Barcelona",            status:"confirmed",assigned:["w2"],notes:""},
-  {id:43,date:"2025-07-17",artist:"hades",venue:"Waka",                   city:"Sabadell",             status:"confirmed",assigned:["w2"],notes:""},
-  {id:44,date:"2025-07-19",artist:"hades",venue:"RBF",                    city:"Madrid",               status:"tbc",      assigned:["w2"],notes:""},
-  {id:45,date:"2025-07-21",artist:"hades",venue:"Amok",                   city:"Mallorca",             status:"tbc",      assigned:["w2"],notes:""},
-  {id:46,date:"2025-07-22",artist:"hades",venue:"Playa Aruba",            city:"Torremolinos",         status:"confirmed",assigned:["w2"],notes:""},
-  {id:47,date:"2025-07-23",artist:"hades",venue:"Barraka",                city:"Gandía",               status:"confirmed",assigned:["w2"],notes:""},
-  {id:48,date:"2025-07-24",artist:"hades",venue:"El Ruedo",               city:"Roquetas del Mar",     status:"confirmed",assigned:["w2"],notes:""},
-  {id:49,date:"2025-07-25",artist:"hades",venue:"Puro Latino",            city:"Puerto de Santa María",status:"confirmed",assigned:["w2"],notes:""},
+const ALL_SHOWS=[
+  {id:1, date:"2025-06-23",artist:"luar", venue:"Beach Club Medusa",city:"Cullera",status:"confirmed",assigned:["yo"],notes:""},
+  {id:2, date:"2025-06-25",artist:"luar", venue:"Shoko",city:"Barcelona",status:"confirmed",assigned:["yo"],notes:""},
+  {id:3, date:"2025-06-26",artist:"luar", venue:"Santana 27",city:"Bilbao",status:"confirmed",assigned:["yo"],notes:""},
+  {id:4, date:"2025-06-27",artist:"luar", venue:"Big Ben",city:"Lleida",status:"confirmed",assigned:["yo"],notes:""},
+  {id:5, date:"2025-06-28",artist:"luar", venue:"Fitz",city:"Marbella",status:"confirmed",assigned:["yo"],notes:""},
+  {id:6, date:"2025-07-02",artist:"luar", venue:"Shoko",city:"Madrid",status:"confirmed",assigned:["w1"],notes:""},
+  {id:7, date:"2025-07-03",artist:"luar", venue:"Momart",city:"Cádiz",status:"confirmed",assigned:["w1"],notes:""},
+  {id:8, date:"2025-07-05",artist:"luar", venue:"RBF",city:"Alicante",status:"confirmed",assigned:["w1"],notes:""},
+  {id:9, date:"2025-07-07",artist:"luar", venue:"Amok",city:"Mallorca",status:"confirmed",assigned:["w1"],notes:""},
+  {id:10,date:"2025-07-08",artist:"luar", venue:"Cosa Nuestra",city:"Málaga",status:"confirmed",assigned:["w1"],notes:""},
+  {id:11,date:"2025-07-09",artist:"luar", venue:"Velice",city:"Torrevieja",status:"confirmed",assigned:["w1"],notes:""},
+  {id:12,date:"2025-07-10",artist:"luar", venue:"Noura",city:"Sevilla",status:"confirmed",assigned:["w1"],notes:""},
+  {id:13,date:"2025-07-11",artist:"luar", venue:"Plaza de Toros",city:"Melilla",status:"confirmed",assigned:["w1"],notes:""},
+  {id:14,date:"2025-07-12",artist:"luar", venue:"Live",city:"Punta Umbría",status:"confirmed",assigned:["w1"],notes:""},
+  {id:15,date:"2025-07-15",artist:"luar", venue:"Cortijo Los Canos",city:"Sotogrande",status:"confirmed",assigned:["w1"],notes:""},
+  {id:16,date:"2025-07-18",artist:"luar", venue:"TBC",city:"—",status:"tbc",assigned:["w1"],notes:""},
+  {id:17,date:"2025-07-19",artist:"luar", venue:"TBC",city:"—",status:"tbc",assigned:["w1"],notes:""},
+  {id:18,date:"2025-07-24",artist:"luar", venue:"Ku",city:"Benidorm",status:"confirmed",assigned:["w1"],notes:""},
+  {id:19,date:"2025-07-25",artist:"luar", venue:"Festival ZEVR",city:"Cullera",status:"confirmed",assigned:["w1"],notes:""},
+  {id:20,date:"2025-07-28",artist:"luar", venue:"TBC",city:"—",status:"tbc",assigned:["w1"],notes:""},
+  {id:21,date:"2025-07-29",artist:"luar", venue:"Condado",city:"Dénia",status:"confirmed",assigned:["w1"],notes:""},
+  {id:22,date:"2025-07-31",artist:"luar", venue:"Albariño",city:"Cambados",status:"confirmed",assigned:["w1"],notes:""},
+  {id:23,date:"2025-08-01",artist:"luar", venue:"Festival Mediterránea",city:"Girona",status:"confirmed",assigned:["w1"],notes:""},
+  {id:24,date:"2025-07-02",artist:"beele",venue:"Pacha Disco Club",city:"Ibiza",status:"confirmed",assigned:["yo"],notes:""},
+  {id:25,date:"2025-07-04",artist:"beele",venue:"Latin Fest: Mora y Turizo",city:"Benidorm",status:"confirmed",assigned:["yo"],notes:""},
+  {id:26,date:"2025-07-05",artist:"beele",venue:"Praia do Aterro",city:"Lisboa",status:"confirmed",assigned:["yo"],notes:""},
+  {id:27,date:"2025-07-09",artist:"beele",venue:"Reggaeton Nigh",city:"Zürich",status:"confirmed",assigned:["yo"],notes:""},
+  {id:28,date:"2025-07-10",artist:"beele",venue:"Movistar Arena · Farruko",city:"Madrid",status:"confirmed",assigned:["yo"],notes:""},
+  {id:29,date:"2025-07-11",artist:"beele",venue:"Movistar Arena · Farruko",city:"Madrid",status:"tbc",assigned:["yo"],notes:""},
+  {id:30,date:"2025-07-12",artist:"beele",venue:"Parque Hermanos Castro",city:"Gijón",status:"confirmed",assigned:["yo"],notes:""},
+  {id:31,date:"2025-07-15",artist:"beele",venue:"Milan Latin Fest",city:"Milán",status:"confirmed",assigned:["yo"],notes:""},
+  {id:32,date:"2025-07-17",artist:"beele",venue:"Latin Fest Valencia",city:"Valencia",status:"confirmed",assigned:["yo"],notes:""},
+  {id:33,date:"2025-07-18",artist:"beele",venue:"Recinto Ferial",city:"Vera, Almería",status:"confirmed",assigned:["yo"],notes:""},
+  {id:34,date:"2025-07-23",artist:"beele",venue:"Estadio Olímpico · Don Omar",city:"Barcelona",status:"confirmed",assigned:["yo"],notes:""},
+  {id:35,date:"2025-07-24",artist:"beele",venue:"Anexo GranCa · Farruko",city:"Gran Canaria",status:"confirmed",assigned:["yo"],notes:""},
+  {id:36,date:"2025-07-25",artist:"beele",venue:"El Muelle · Yandel",city:"Tenerife",status:"confirmed",assigned:["yo"],notes:""},
+  {id:37,date:"2025-07-26",artist:"beele",venue:"Urban Paradise · Omar Courtz",city:"Málaga",status:"confirmed",assigned:["yo"],notes:""},
+  {id:38,date:"2025-07-10",artist:"hades",venue:"White Beach",city:"Huelva",status:"confirmed",assigned:["w2"],notes:""},
+  {id:39,date:"2025-07-11",artist:"hades",venue:"RBF",city:"Santander",status:"tbc",assigned:["w2"],notes:""},
+  {id:40,date:"2025-07-12",artist:"hades",venue:"Fitz",city:"Marbella",status:"confirmed",assigned:["w2"],notes:""},
+  {id:41,date:"2025-07-15",artist:"hades",venue:"Fitz",city:"Madrid",status:"confirmed",assigned:["w2"],notes:""},
+  {id:42,date:"2025-07-16",artist:"hades",venue:"Shoko",city:"Barcelona",status:"confirmed",assigned:["w2"],notes:""},
+  {id:43,date:"2025-07-17",artist:"hades",venue:"Waka",city:"Sabadell",status:"confirmed",assigned:["w2"],notes:""},
+  {id:44,date:"2025-07-19",artist:"hades",venue:"RBF",city:"Madrid",status:"tbc",assigned:["w2"],notes:""},
+  {id:45,date:"2025-07-21",artist:"hades",venue:"Amok",city:"Mallorca",status:"tbc",assigned:["w2"],notes:""},
+  {id:46,date:"2025-07-22",artist:"hades",venue:"Playa Aruba",city:"Torremolinos",status:"confirmed",assigned:["w2"],notes:""},
+  {id:47,date:"2025-07-23",artist:"hades",venue:"Barraka",city:"Gandía",status:"confirmed",assigned:["w2"],notes:""},
+  {id:48,date:"2025-07-24",artist:"hades",venue:"El Ruedo",city:"Roquetas del Mar",status:"confirmed",assigned:["w2"],notes:""},
+  {id:49,date:"2025-07-25",artist:"hades",venue:"Puro Latino",city:"Puerto de Santa María",status:"confirmed",assigned:["w2"],notes:""},
 ];
 const MKTG=[
-  {id:"mk1", date:"2025-06-23",artist:"luar", city:"Cullera",    venue:"Beach Club Medusa",    type:"reel",time:"Antes del soundcheck",caption:"Arrancamos 🔴\nEuro Tour 2026 en marcha 🌍\n📍 Cullera\n@luar_lal",hashtags:"#soundengineer #tourlife #liveSound #luarlal #europatour #fohlife",tip:"20 segundos del setup de consola con el venue al fondo.",priority:false},
-  {id:"mk2", date:"2025-06-25",artist:"luar", city:"Barcelona",  venue:"Shoko",                type:"foto",time:"Después del show",    caption:"Barcelona 🔥\n@luar_lal en Shoko\n📍 BCN — Euro Tour 2026",hashtags:"#soundengineer #barcelona #shoko #luarlal #tourproduction",tip:"Foto tuya en la consola con las luces del show de fondo.",priority:false},
-  {id:"mk3", date:"2025-06-28",artist:"luar", city:"Marbella",   venue:"Fitz",                 type:"reel",time:"Durante el show",      caption:"Marbella con @luar_lal 🌊🎛\nNoche perfecta en el sur\n📍 Fitz — Euro Tour 2026\n💬 Bookings → DM",hashtags:"#soundengineer #marbella #luarlal #tourlife #fohEngineer",tip:"Reel corto con el público.",priority:false},
-  {id:"mk4", date:"2025-07-02",artist:"beele",city:"Ibiza",      venue:"Pacha Disco Club",     type:"reel",time:"Durante el show",      caption:"Pacha Ibiza 🎛🏝\n@beele — la isla nos recibe 🔥\nEuro Tour 2026 🌍\n💬 Bookings → DM",hashtags:"#ibiza #pacha #soundengineer #beele #fohEngineer",tip:"Pacha es reconocido mundialmente.",priority:false},
-  {id:"mk5", date:"2025-07-05",artist:"beele",city:"Lisboa",     venue:"Praia do Aterro",      type:"reel",time:"Durante el show",      caption:"Lisboa 🇵🇹 con @beele\nPraia do Aterro 🌊🎛\nEuro Tour 2026 🌍\n💬 Bookings → DM",hashtags:"#lisboa #portugal #beele #soundengineer #fohEngineer",tip:"Lisboa es hermosa visualmente.",priority:false},
-  {id:"mk6", date:"2025-07-07",artist:"luar", city:"Mallorca",   venue:"Amok",                 type:"reel",time:"Durante el show",      caption:"Mallorca 🏝 con @luar_lal\nIsla conquistada 🎛🔴\nEuro Tour 2026 🌍\n💬 Bookings → DM",hashtags:"#mallorca #soundengineer #luarlal #fohEngineer",tip:"Mallorca en verano es contenido premium.",priority:false},
-  {id:"mk7", date:"2025-07-09",artist:"beele",city:"Zúrich",     venue:"Reggaeton Nigh",       type:"foto",time:"Durante el show",      caption:"Zürich 🇨🇭 @beele\nReggaetón llegando a Suiza 🎛\nEuro Tour 2026 🌍",hashtags:"#zurich #suiza #beele #soundengineer #reggaeton",tip:"Reggaeton en Suiza es diferenciador.",priority:false},
-  {id:"mk8", date:"2025-07-10",artist:"beele",city:"Madrid",     venue:"Movistar Arena",       type:"reel",time:"Durante el show",      caption:"🏟 Movistar Arena, Madrid\n@beele x @farruko\nEsto es lo que hacemos 🎛🔴\nEuro Tour 2026 🌍\n💬 Bookings → DM",hashtags:"#movistararena #madrid #beele #farruko #soundengineer #arena #fohEngineer",tip:"⭐ EL POST MÁS IMPORTANTE. Graba desde FOH con el estadio lleno. Etiqueta a Beele y Farruko.",priority:true},
-  {id:"mk9", date:"2025-07-11",artist:"luar", city:"Melilla",    venue:"Plaza de Toros",       type:"reel",time:"Durante el show",      caption:"Plaza de Toros, Melilla 🎛\n@luar_lal\nDonde nos llamen, llegamos 🌍\n💬 Bookings → DM",hashtags:"#melilla #soundengineer #luarlal #plazadetoros #fohEngineer",tip:"Una Plaza de Toros es visualmente único.",priority:false},
-  {id:"mk10",date:"2025-07-15",artist:"beele",city:"Milán",      venue:"Milan Latin Fest",     type:"reel",time:"Durante el show",      caption:"Milano 🇮🇹 @beele\nMilan Latin Fest 🎛🌍\n💬 Bookings → DM",hashtags:"#milan #italia #beele #soundengineer #milanlatinfest #fohEngineer",tip:"Milán tiene mucho peso de marca.",priority:false},
-  {id:"mk11",date:"2025-07-23",artist:"beele",city:"Barcelona",  venue:"Estadio Olímpico",     type:"reel",time:"Durante el show",      caption:"🏟 Estadio Olímpico de Barcelona\n@beele x @donomar\nBarcelona, una noche histórica 🎛🔴\nEuro Tour 2026 🌍\n💬 Bookings → DM",hashtags:"#estadioolimpico #barcelona #beele #donomar #soundengineer #stadium #fohEngineer",tip:"⭐ SEGUNDO SHOW GRANDE. Plano desde FOH con el estadio lleno.",priority:true},
-  {id:"mk12",date:"2025-07-25",artist:"beele",city:"Tenerife",   venue:"El Muelle",            type:"reel",time:"Durante el show",      caption:"Tenerife 🌋 @beele x @yandel\nEl Muelle 🔥🎛\nEuro Tour 2026 🌍\n💬 Bookings → DM",hashtags:"#tenerife #canarias #beele #yandel #soundengineer #fohEngineer",tip:"Reel etiquetando a ambos artistas.",priority:false},
-  {id:"mk13",date:"2025-07-26",artist:"beele",city:"Málaga",     venue:"Urban Paradise",       type:"reel",time:"Post show",            caption:"Málaga cierra el verano con @beele x @omarcourtz\nUrban Paradise — Euro Tour 2026 wrapped ✅\nDe Ibiza a Canarias 🙏🌍\n💬 Bookings → DM",hashtags:"#malaga #beele #soundengineer #tourwrapped #tourproduction #worldwide",tip:"Post cierre del tour de Beele. Reel resumen: Pacha, Movistar Arena, Estadio Olímpico.",priority:true},
-  {id:"mk14",date:"2025-07-24",artist:"luar", city:"Benidorm",   venue:"Ku",                   type:"reel",time:"Durante el show",      caption:"Ku Benidorm 🎛🏖\n@luar_lal — club icónico de Europa\nEuro Tour 2026 🌍\n💬 Bookings → DM",hashtags:"#benidorm #kubenidorm #soundengineer #luarlal #fohEngineer",tip:"Ku es un club icónico en Europa.",priority:false},
-  {id:"mk15",date:"2025-08-01",artist:"luar", city:"Girona",     venue:"Festival Mediterránea",type:"reel",time:"Post show",            caption:"Fin del tour 🙌\nFestival Mediterránea, Girona\n@luar_lal — Euro Tour 2026 wrapped ✅\nGracias equipo 🎛🌍\n💬 Bookings → DM",hashtags:"#girona #mediterranea #luarlal #tourwrapped #soundengineer #worldwide",tip:"Post cierre del tour. Reel resumen con los mejores momentos.",priority:true},
-  {id:"mk16",date:"2025-07-22",artist:"hades",city:"Torremolinos",venue:"Playa Aruba",         type:"reel",time:"Durante el show",      caption:"Torremolinos ☀️ @hades66oficial\nPlaya Aruba 🌊🎛\nEuro Tour 2026\n💬 Bookings → DM",hashtags:"#torremolinos #playaaruba #hades66 #soundengineer #playa",tip:"Beach club en verano. Reel del show.",priority:false},
-  {id:"mk17",date:"2025-07-25",artist:"hades",city:"Puerto de Santa María",venue:"Puro Latino",type:"reel",time:"Post show",           caption:"Puerto de Santa María 🎛\n@hades66oficial — Puro Latino\nEuro Tour 2026 wrapped ✅\nGracias equipo 🙏🌍\n💬 Bookings → DM",hashtags:"#puertadesantamaria #purolatino #hades66 #soundengineer #tourwrapped",tip:"Post cierre del tour de Hades 66.",priority:false},
+  {id:"m1",date:"2025-06-23",artist:"luar",city:"Cullera",venue:"Beach Club Medusa",type:"reel",time:"Antes del soundcheck",caption:"Arrancamos 🔴\nEuro Tour 2026 🌍\n@luar_lal",ht:"#soundengineer #tourlife #luarlal #fohEngineer",tip:"Setup de consola, 20 segundos.",priority:false},
+  {id:"m2",date:"2025-07-02",artist:"beele",city:"Ibiza",venue:"Pacha Disco Club",type:"reel",time:"Durante el show",caption:"Pacha Ibiza 🎛🏝\n@beele — la isla nos recibe\nEuro Tour 2026 🌍\n💬 Bookings DM",ht:"#ibiza #pacha #beele #soundengineer #fohEngineer",tip:"Pacha es reconocido mundialmente.",priority:false},
+  {id:"m3",date:"2025-07-10",artist:"beele",city:"Madrid",venue:"Movistar Arena",type:"reel",time:"Durante el show",caption:"🏟 Movistar Arena\n@beele x @farruko\nEsto es lo que hacemos 🎛🔴\n💬 Bookings DM",ht:"#movistararena #beele #farruko #soundengineer #arena #fohEngineer",tip:"EL POST MÁS IMPORTANTE. FOH con estadio lleno. Etiqueta a Beele y Farruko.",priority:true},
+  {id:"m4",date:"2025-07-11",artist:"luar",city:"Melilla",venue:"Plaza de Toros",type:"reel",time:"Durante el show",caption:"Plaza de Toros, Melilla 🎛\n@luar_lal\nDonde nos llamen 🌍\n💬 Bookings DM",ht:"#melilla #luarlal #plazadetoros #soundengineer",tip:"Venue único visualmente.",priority:false},
+  {id:"m5",date:"2025-07-23",artist:"beele",city:"Barcelona",venue:"Estadio Olímpico",type:"reel",time:"Durante el show",caption:"🏟 Estadio Olímpico Barcelona\n@beele x @donomar\nNoche histórica 🎛🔴\n💬 Bookings DM",ht:"#estadioolimpico #barcelona #beele #donomar #soundengineer #fohEngineer",tip:"2do show grande. FOH con estadio lleno.",priority:true},
+  {id:"m6",date:"2025-07-26",artist:"beele",city:"Málaga",venue:"Urban Paradise",type:"reel",time:"Post show",caption:"Málaga cierra el verano\n@beele Tour 2026 wrapped ✅\nDe Ibiza a Canarias 🙏🌍\n💬 Bookings DM",ht:"#malaga #beele #tourwrapped #soundengineer #worldwide",tip:"Reel resumen: Pacha, Movistar Arena, Estadio Olímpico.",priority:true},
+  {id:"m7",date:"2025-08-01",artist:"luar",city:"Girona",venue:"Festival Mediterránea",type:"reel",time:"Post show",caption:"Fin del tour 🙌\nFestival Mediterránea, Girona\n@luar_lal Tour 2026 wrapped ✅\nGracias equipo 🎛🌍\n💬 Bookings DM",ht:"#girona #luarlal #tourwrapped #soundengineer #worldwide",tip:"Reel resumen con mejores momentos.",priority:true},
 ];
-const TYPE_CFG={reel:{label:"Reel",emoji:"🎬",color:"#E24B4A",bg:"#FCEBEB"},foto:{label:"Foto",emoji:"📸",color:"#185FA5",bg:"#E6F1FB"},historia:{label:"Historia",emoji:"📱",color:"#0F6E56",bg:"#E1F5EE"}};
+const TYPE={reel:{l:"Reel",e:"🎬",c:"#E24B4A",b:"#FCEBEB"},foto:{l:"Foto",e:"📸",c:"#185FA5",b:"#E6F1FB"},historia:{l:"Historia",e:"📱",c:"#0F6E56",b:"#E1F5EE"}};
 
-const OFFICE_SYSTEM=`Eres el asistente de oficina virtual de Andrés Ortiz, ingeniero de sonido con tours europeos. Ayudas a redactar emails profesionales, mensajes WhatsApp y gestionar comunicaciones de riders técnicos.
+const OFFICE_SYS=`Eres el asistente de oficina virtual de Andrés Ortiz, ingeniero de sonido. Ayudas a redactar emails y WhatsApp sobre riders técnicos.
+ANDRÉS: Tel +34 685 667 521 | ing1andresortiz@gmail.com | @andres_ortizp
+EQUIPO: Andrés Hernández (AH, FOH, Luar La L) | Miguel García (MG, FOH, Hades 66)
+FRAN GUERRERO (Tour Manager Luar/Hades): +34 640 640 404
 
-ANDRÉS ORTIZ: Tel +34 685 667 521 | ing1andresortiz@gmail.com | @andres_ortizp
-EQUIPO: Andrés Hernández (AH, FOH, cubre Luar La L) | Miguel García (MG, FOH, cubre Hades 66)
-CONTACTO TOURS: Fran Guerrero (Tour Manager Luar/Hades) Tel: +34 640 640 404
+RIDER LUAR LA L 2026:
+- Consolas FOH/MON: Waves LV1 (UPC 2000w) | Alt: DiGico 225
+- PA (solo Line Array): L-Acoustics K2+SB28, D&B GSL/KSL, Meyer Phanter, Cohesion CO12/CO10. Mín 115dB(A)/125dB(C)
+- Monitores: 2x Sidefills (L-Acoustics ARCS+KS28 | d&b V8+V-SUB | Meyer+900LFC), 6x Wedges (d&b M4/L-Acoustics X15/Meyer MJF-210)
+- IEM: 4x Shure Axient PSM, 10x P10R+ bodypacks total
+- Mic: 2x AD4Q(4ch), 8x ADX2FD-SM58 wireless+talkback, 1x UA844+2xUA874, 1x AXT600+AD610
+- Input: Ch1 DJ-L(DI), Ch2 DJ-R(DI), Ch3 TB CUSTOM, Ch4 TB PROD, Ch5 TB SONIDO, Ch6 TB MGMT, Ch7 SPARE2, Ch8 SPARE1, Ch9 TB FRANK, Ch10 FRANK, Ch11 LUAR, Ch12 TB LUAR (todos ADX2FD)
+- Output: 1-2 LUAR(PSMx2), 3-4 CUSTOM(PSMx1), 5-6 FRANK(PSMx1), 7-8 CUE(PSMx1), 9 SIDEFILLS, 10 WEDGES, 11 PROD(PSMx1), 12 MGMT(PSMx1)
+- Escenario: 9.75x7.3x1.5m | Riser DJ en U: 2.5m ancho, 1.5m profundidad, 1m altura
+- Iluminación: GrandMA3/GrandMA2 Full + UPS 1000w. 2x Lycian Superstar 2500W. 12xBMFL, 12xMartin MAC Quantum, 8xRobe LedBeam150, 18xRobe MegaPointe, 12xRobe Spiider, 6xStrike Array4, 6xJDC1, 4xMDG ATMe
+- Video: Main LED 22hx12w(4mm), DJ LED 4hx8w(4mm), 6 Strips 9hx3w(4mm), IMAG: 2x pantallas 5mx3m(12mm), Folsom ImagePro-II HD, Blackmagic Atem 1ME, 2x cámaras UltraHD FOH, 1x cámara robótica stage
+- SFX: 8x CO2 Cryo Jets, 6x FLAMES X2-Wave, 8x Sparkulars gold, 2x LSG Machine, 6x Confetti Cannon white, 4x Confetti Blaster. PYRO: 12x Gerbs Silver, 12x Mines Red, 12x Mines Crackling, 12x Comet Red, 4x Concussion backstage
+- Transporte: 2x SUV negra (Escalade/Tahoe/Suburban 2022+). Cartel: L3TRA (NUNCA "Luar La L"). Para festivales: +1 Sprinter
+- Hotel: 5 estrellas, max 30min venue, desayuno, WiFi, check-in temprano
+- Camerino: exclusivo, asientos NEGROS, 8 personas, 2x velas vanilla/canela, A/C, baño, WiFi
+- Catering artista: 2x Macallan Sherry Oak 12y, 24x RedBull/Celsius, 24x agua Fiji, frutas, refrescos, cubiertos plata (sin plástico)
+- Catering crew: hielera refrescos, 15x RedBull, 24x agua, frutas, toallas negras
+- Catering FOH/Stage: 1x hielera agua+Gatorade (rellenar antes soundcheck y show)
+- Soundcheck: mínimo 2 horas PRIVADO
+- PLAZO CRÍTICO: contactar Production Manager MÍNIMO 2 SEMANAS ANTES. Sin contacto = posible cancelación + pago 100%
 
-RIDER LUAR LA L (L3TRA TOUR 2026):
-CONSOLAS: FOH/MON: Waves LV1 (UPC 2000w) | Alt: DiGico 225
-PA ACEPTADO (solo Line Array, Cardoid Subs): Cohesion CO12/CO10/CO8, L-Acoustics K2+SB28, D&B GSL/KSL, Meyer Phanter. Mín 115dB(A)/125dB(C).
-MONITORES: 2x Sidefills (L-Acoustics ARCS+KS28 | d&b V8/V12 | Meyer+900-LFC), 6x Wedges (d&b M4/L-Acoustics X15/Meyer MJF-210), 4x IEM Shure Axient PSM (10x P10R+ bodypacks)
-MICROFONÍA: 2x AD4Q (4ch), 8x ADX2FD-SM58 wireless+talkback, 1x UA844+SWB+2xUA874, 1x AXT600+AD610 ShowLink, 2x Shure VP82/Sennheiser MKH4416 shotguns
-INPUT LIST: Ch1 DJ-L(DI), Ch2 DJ-R(DI), Ch3 TB CUSTOM(ADX2FD), Ch4 TB PROD(ADX2FD), Ch5 TB SONIDO(ADX2FD), Ch6 TB MGMT(ADX2FD), Ch7 SPARE2/GUEST2(ADX2FD), Ch8 SPARE1/GUEST1(ADX2FD), Ch9 TB FRANK(ADX2FD), Ch10 FRANK(ADX2FD), Ch11 LUAR(ADX2FD), Ch12 TB LUAR(ADX2FD)
-OUTPUT: Out1-2 LUAR(PSMx2), Out3-4 CUSTOM(PSMx1), Out5-6 FRANK(PSMx1), Out7-8 CUE(PSMx1), Out9 SIDEFILLS, Out10 WEDGES, Out11 PROD(PSMx1), Out12 MGMT(PSMx1)
-ESCENARIO: 9.75x7.3x1.5m | Riser DJ en U: 2.5m ancho, 1.5m profundidad, 1m altura | Monitor World Stage-Left | Pyro World Stage-Right
-ILUMINACIÓN: GrandMA3/GrandMA2 Full + UPS 1000w | 2x Lycian Superstar 2500W | 12xBMFL WashBeam, 12xMartin MAC Quantum, 8xRobe LedBeam150, 18xRobe MegaPointe, 12xRobe Spiider, 6xStrike Array4, 6xJDC1, 4xMDG ATMe
-VIDEO: Main LED 22hx12w(4mm) | DJ LED 4hx8w(4mm) | 6x Strips 9hx3w(4mm) | IMAG: 2x pantallas LED 5mx3m(12mm), Folsom ImagePro-II HD, Blackmagic Atem 1M/E, 2x cámaras UltraHD FOH, 1x cámara robótica stage
-SFX: 8x CO2 Cryo Jets, 6x FLAMES X2-Wave, 8x Sparkulars gold, 2x LSG Machine, 6x Confetti Cannon white, 4x Confetti Blaster multicolor | PYRO: 12x Gerbs Silver, 12x Mines Red, 12x Mines Crackling, 12x Comet Red, 4x Concussion backstage
-TRANSPORTE: 2x SUV negra (Escalade/Tahoe/Suburban 2022+, cristales ahumados) | Cartel: L3TRA (NUNCA mencionar Luar La L) | Festivales: +1 Sprinter
-HOTEL: 5 estrellas, selección artista, max 30min venue, desayuno, check-in temprano, WiFi
-CAMERINO: Exclusivo Luar La L, asientos NEGROS, 8 personas, 2x velas vanilla/canela, lámpara, A/C, espejo, 110v, baño privado, WiFi
-CATERING ARTISTA: Cubiertos plata/vasos vidrio (sin plástico), 2x Macallan Sherry Oak 12y, 24x Celsius/RedBull, 24x agua Fiji, refrescos, frutas frescas, jugos, 6x toallas, hielo
-CATERING CREW: Hielera refrescos, 15x Celsius/RedBull, 24x agua, frutas, jugos, 6x toallas negras, hielo
-CATERING STAGE/FOH: 1x hielera agua+Gatorade (rellenar antes de soundcheck y show)
-CATERING ROOM: Almuerzo(12p antes soundcheck) + Cena(12p antes show): salad bar, proteínas(pollo/res/pavo/bistec), 2 acompañamientos, bebidas
-SEGURIDAD: Profesional en camerinos/backstage/FOH/escenario. Solo personal artista backstage. Escort policial. 10 boletos cortesía + acreditaciones. Diagrama venue 1 semana antes.
-SOUNDCHECK: Mínimo 2 horas PRIVADO. Nadie ajeno durante soundcheck.
-PLAZO CRÍTICO: Cliente contacta Production Manager MÍNIMO 2 SEMANAS ANTES. Sin contacto = posible cancelación con pago 100% según contrato. Rider firmado 2 semanas antes o 1 semana tras recibirlo.
+RIDER HADES 66 2026:
+- Consolas: Waves LV1 (preferida) | Yamaha CL5. Enviar contra-rider siempre.
+- Mic (OBLIGATORIO Shure Axient): 1x AD4Q(4ch), 4x AD2 wireless, 2x SM58 talkback
+- IEM: 3x Shure PSM-1000 con P10R+, 6x bodypacks, 2x Sidefills, 2x monitores DJ, 4x líneas 1/4" a XLR
+- Input: Ch1 DJ-L, Ch2 DJ-R, Ch3 HADES(AD2), Ch4 BGV(AD2), Ch5 TB PROD(AD2), Ch6 TB MON, Ch7 TB DJ
+- Output: 1-2 IEM HADES(4BP), 3-4 IEM BGV, 5-6 IEM DJ, 7-8 Floor Wedges, 9-10 Sidefills
+- Soundcheck: mínimo 1 hora PRIVADO. Sin invitados ni prensa.
 
-RIDER HADES 66 (EURO TOUR 2026):
-CONSOLAS: Waves LV1 (preferida) | Yamaha CL5 (alternativa) — enviar contra-rider para confirmar equipo local
-MICROFONÍA (OBLIGATORIO Shure Axient): 1x AD4Q (4ch receptor), 4x AD2 (wireless), 2x SM58 con switch (talkback)
-IEM/MONITORES: 3x Shure PSM-1000 con P10R+, 6x bodypacks, 2x Sidefills, 2x monitores DJ, 4x líneas 1/4" a XLR
-INPUT: Ch1 DJ-L, Ch2 DJ-R, Ch3 HADES66(AD2), Ch4 BGV(AD2), Ch5 TB PROD(AD2), Ch6 TB MON, Ch7 TB DJ(Boom Stand)
-OUTPUT: Out1-2 MIX1-IEM HADES(4bodypacks), Out3-4 MIX2-IEM BGV, Out5-6 MIX3-IEM DJ, Out7-8 Floor Wedges, Out9-10 Sidefills
-SOUNDCHECK: Mínimo 1 hora PRIVADO. Sin invitados ni prensa durante soundcheck.
+Responde en español. Para emails: incluye ASUNTO y CUERPO. Para WhatsApp: breve y directo. Pide datos que falten antes de redactar.`;
 
-TIPOS DE COMUNICACIÓN: emails a promotoras/venues/managers, WhatsApp al equipo, responder mensajes recibidos, checklists de rider, alertas de incumplimiento, solicitar counter-rider, coordinar catering/hotel/transporte.
-
-Responde siempre en español. Sé preciso con datos técnicos. Para emails: incluye ASUNTO + CUERPO. Para WhatsApp: breve y directo. Pide datos que falten antes de redactar.`;
-
-const OFFICE_QUICK=[
-  {icon:"📧",label:"Email — confirmar show Luar La L",prompt:"Necesito un email a una promotora confirmando un show de Luar La L. Pídeme los datos que falten."},
-  {icon:"🎛",label:"Checklist rider Luar La L",prompt:"Genera el checklist completo de verificación del rider técnico de Luar La L para revisar antes de llegar al venue."},
-  {icon:"🎛",label:"Checklist rider Hades 66",prompt:"Genera el checklist completo de verificación del rider técnico de Hades 66."},
-  {icon:"💬",label:"WhatsApp a Andrés Hernández",prompt:"Redacta un WhatsApp para Andrés Hernández con los detalles del próximo show de Luar La L que tiene que cubrir. Pídeme los datos necesarios."},
-  {icon:"💬",label:"WhatsApp a Miguel García",prompt:"Redacta un WhatsApp para Miguel García con los detalles del próximo show de Hades 66."},
-  {icon:"⚠️",label:"Venue no cumple el rider",prompt:"Una promotora me dice que no tienen el sistema PA del rider de Luar La L. ¿Cómo respondo profesionalmente?"},
-  {icon:"📋",label:"Solicitar counter-rider",prompt:"Redacta un email solicitando el counter-rider al venue para verificar el equipo disponible."},
-  {icon:"🏨",label:"Recordatorio hotel y transporte",prompt:"Email a promotora recordando requerimientos de hotel y transporte del rider de Luar La L. El show es en 2 semanas."},
-  {icon:"📝",label:"Responder email recibido",prompt:"Voy a pegarte un email recibido de una promotora. Ayúdame a redactar la respuesta profesional."},
-  {icon:"🚨",label:"Aviso urgente de cambio",prompt:"Redacta un mensaje urgente para notificar un cambio de horario en el soundcheck."},
-];
-
-/* ── HELPERS ── */
+// ── HELPERS ──────────────────────────────────────────────────
+const fmtShort=d=>{const dt=new Date(d+"T12:00:00");return dt.getDate()+" "+dt.toLocaleDateString("es-ES",{month:"short"});};
 const fmtFull=d=>new Date(d+"T12:00:00").toLocaleDateString("es-ES",{weekday:"short",day:"2-digit",month:"long"});
+const monthName=d=>new Date(d+"-01T12:00:00").toLocaleDateString("es-ES",{month:"long",year:"numeric"});
 const isToday=d=>new Date(d+"T12:00:00").toDateString()===new Date().toDateString();
 const isPast=d=>new Date(d+"T12:00:00")<new Date()&&!isToday(d);
-const isSoon=d=>{const diff=new Date(d+"T12:00:00")-new Date();return diff>0&&diff<3*86400000;};
-const groupMonth=arr=>{const g={};arr.forEach(s=>{const m=s.date.slice(0,7);if(!g[m])g[m]=[];g[m].push(s);});return g;};
-const Av=({m,size=28})=>e('div',{style:{width:size,height:size,borderRadius:"50%",background:m.bg,color:m.color,display:"flex",alignItems:"center",justifyContent:"center",fontSize:size*.34,fontWeight:700,flexShrink:0}},m.initials);
-const Pill=({label,active,color,bg,onClick,c})=>e('button',{onClick,style:{padding:"6px 13px",borderRadius:20,border:active?`2px solid ${color}`:`2px solid ${c.border2}`,background:active?bg:c.surface,color:active?color:c.text2,fontWeight:600,fontSize:12,cursor:"pointer",whiteSpace:"nowrap",transition:"all .15s"}},label);
+const groupM=arr=>{const g={};arr.forEach(s=>{const m=s.date.slice(0,7);if(!g[m])g[m]=[];g[m].push(s);});return g;};
 
-/* ── ASSIGN MODAL ── */
-const AssignModal=({show,onClose,onSave,c})=>{
+// ── MINI COMPONENTS ──────────────────────────────────────────
+function Av({m,sz=28}){
+  return React.createElement("div",{style:{width:sz,height:sz,borderRadius:"50%",background:m.bg,color:m.color,display:"flex",alignItems:"center",justifyContent:"center",fontSize:sz*.33,fontWeight:700,flexShrink:0}},m.initials);
+}
+
+function StatusDot({s}){
+  const map={confirmed:["#16a34a","Conf."],tbc:["#d97706","TBC"],done:["#6b7280","Listo"]};
+  const [c,l]=map[s]||["#9ca3af","—"];
+  return React.createElement("span",{style:{fontSize:10,fontWeight:600,color:c}},"● "+l);
+}
+
+// ── ASSIGN MODAL ─────────────────────────────────────────────
+function AssignModal({show,onClose,onSave}){
+  const [sel,setSel]=React.useState([...show.assigned]);
+  const [status,setStatus]=React.useState(show.status);
+  const [notes,setNotes]=React.useState(show.notes||"");
   const a=ARTISTS[show.artist];
-  const [sel,setSel]=useState([...show.assigned]);
-  const [status,setStatus]=useState(show.status);
-  const [notes,setNotes]=useState(show.notes||"");
   const toggle=id=>setSel(p=>p.includes(id)?p.filter(x=>x!==id):[...p,id]);
-  return e('div',{onClick:onClose,style:{position:"fixed",inset:0,background:"rgba(0,0,0,0.7)",zIndex:200,display:"flex",alignItems:"center",justifyContent:"center",padding:16}},
-    e('div',{onClick:ev=>ev.stopPropagation(),style:{background:c.surface,borderRadius:16,padding:22,width:"100%",maxWidth:480,boxShadow:"0 24px 64px rgba(0,0,0,.4)",maxHeight:"90vh",overflow:"auto"}},
-      e('div',{style:{display:"flex",alignItems:"center",gap:8,marginBottom:6}},e('span',{style:{background:a.bg,color:a.color,borderRadius:6,padding:"2px 9px",fontSize:11,fontWeight:700}},a.name)),
-      e('div',{style:{fontSize:17,fontWeight:700,color:c.text,marginBottom:2}},show.venue),
-      e('div',{style:{fontSize:12,color:c.text2,marginBottom:16}},fmtFull(show.date)+" · "+show.city),
-      e('div',{style:{fontSize:10,fontWeight:700,color:c.text3,textTransform:"uppercase",letterSpacing:1,marginBottom:10}},"Técnico asignado"),
-      TEAM.map(m=>{const on=sel.includes(m.id);return e('div',{key:m.id,onClick:()=>toggle(m.id),style:{display:"flex",alignItems:"center",gap:12,padding:"9px 12px",borderRadius:10,border:on?`2px solid ${m.color}`:`2px solid ${c.border2}`,background:on?m.bg:c.surface2,cursor:"pointer",marginBottom:8,transition:"all .15s"}},e(Av,{m,size:30}),e('span',{style:{fontSize:13,fontWeight:600,color:on?m.color:c.text,flex:1}},m.name),on&&e('span',{style:{color:m.color,fontSize:16}},"✓"));}),
-      e('div',{style:{fontSize:10,fontWeight:700,color:c.text3,textTransform:"uppercase",letterSpacing:1,margin:"14px 0 10px"}},"Estado"),
-      e('div',{style:{display:"flex",gap:8,marginBottom:14}},[["confirmed","Confirmado","#16a34a"],["tbc","TBC","#d97706"],["done","Terminado","#6b7280"]].map(([v,l,col])=>e('div',{key:v,onClick:()=>setStatus(v),style:{flex:1,textAlign:"center",padding:"7px 4px",borderRadius:8,cursor:"pointer",border:status===v?`2px solid ${col}`:`2px solid ${c.border2}`,background:status===v?col+"22":c.surface2,color:status===v?col:c.text2,fontWeight:600,fontSize:12,transition:"all .15s"}},l))),
-      e('textarea',{value:notes,onChange:ev=>setNotes(ev.target.value),placeholder:"Notas, rider técnico, contacto...",style:{width:"100%",padding:"9px 12px",borderRadius:10,border:`2px solid ${c.border2}`,fontSize:13,resize:"none",outline:"none",fontFamily:"inherit",minHeight:64,background:c.surface2,color:c.text,marginBottom:14}}),
-      e('div',{style:{display:"flex",gap:8}},
-        e('button',{onClick:onClose,style:{flex:1,padding:"10px",borderRadius:10,border:`2px solid ${c.border2}`,background:c.surface,color:c.text,fontWeight:600,fontSize:13,cursor:"pointer"}},"Cancelar"),
-        e('button',{onClick:()=>onSave({...show,assigned:sel,status,notes}),style:{flex:2,padding:"10px",borderRadius:10,border:"none",background:"#E24B4A",color:"#fff",fontWeight:700,fontSize:13,cursor:"pointer"}},"Guardar")
-      )
-    )
-  );
-};
-
-/* ── MARKETING MODAL ── */
-const MktgModal=({event,onClose,c})=>{
-  const [copied,setCopied]=useState(null);
-  const copy=(text,id)=>{navigator.clipboard.writeText(text);setCopied(id);setTimeout(()=>setCopied(null),2000);};
-  const t=TYPE_CFG[event.type];const a=ARTISTS[event.artist];
-  return e('div',{onClick:onClose,style:{position:"fixed",inset:0,background:"rgba(0,0,0,0.7)",zIndex:200,display:"flex",alignItems:"flex-end"}},
-    e('div',{onClick:ev=>ev.stopPropagation(),style:{background:c.surface,borderRadius:"20px 20px 0 0",padding:"20px 16px 48px",width:"100%",maxHeight:"88vh",overflow:"auto"}},
-      e('div',{style:{width:40,height:4,background:c.border2,borderRadius:2,margin:"0 auto 16px"}}),
-      e('div',{style:{display:"flex",gap:6,marginBottom:6,flexWrap:"wrap"}},e('span',{style:{background:a.bg,color:a.color,borderRadius:6,padding:"2px 9px",fontSize:11,fontWeight:700}},a.name),e('span',{style:{background:t.bg,color:t.color,borderRadius:6,padding:"2px 9px",fontSize:11,fontWeight:700}},t.emoji+" "+t.label),event.priority&&e('span',{style:{background:"#fef3c7",color:"#d97706",borderRadius:6,padding:"2px 9px",fontSize:11,fontWeight:700}},"⭐ Prioritario")),
-      e('div',{style:{fontSize:17,fontWeight:700,color:c.text,marginBottom:2}},event.venue),
-      e('div',{style:{fontSize:12,color:c.text2,marginBottom:16}},"📅 "+fmtFull(event.date)+" · 📍 "+event.city+" · ⏰ "+event.time),
-      e('div',{style:{background:c.surface2,borderRadius:12,padding:14,marginBottom:12}},e('div',{style:{fontSize:10,fontWeight:700,color:c.text3,textTransform:"uppercase",letterSpacing:1,marginBottom:8}},"💡 Tip"),e('div',{style:{fontSize:13,color:c.text,lineHeight:1.6}},event.tip)),
-      e('div',{style:{background:c.surface2,borderRadius:12,padding:14,marginBottom:12}},e('div',{style:{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}},e('div',{style:{fontSize:10,fontWeight:700,color:c.text3,textTransform:"uppercase",letterSpacing:1}},"✍️ Caption"),e('button',{onClick:()=>copy(event.caption,"cap"),style:{padding:"4px 10px",background:copied==="cap"?"#16a34a":"#111",color:"#fff",border:"none",borderRadius:8,fontSize:11,fontWeight:600,cursor:"pointer"}},copied==="cap"?"✓ Copiado":"Copiar")),e('div',{style:{fontSize:13,color:c.text,lineHeight:1.6,whiteSpace:"pre-wrap"}},event.caption)),
-      e('div',{style:{background:c.surface2,borderRadius:12,padding:14}},e('div',{style:{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}},e('div',{style:{fontSize:10,fontWeight:700,color:c.text3,textTransform:"uppercase",letterSpacing:1}},"# Hashtags"),e('button',{onClick:()=>copy(event.hashtags,"hash"),style:{padding:"4px 10px",background:copied==="hash"?"#16a34a":"#111",color:"#fff",border:"none",borderRadius:8,fontSize:11,fontWeight:600,cursor:"pointer"}},copied==="hash"?"✓ Copiado":"Copiar")),e('div',{style:{fontSize:12,color:c.text2,lineHeight:1.8}},event.hashtags))
-    )
-  );
-};
-
-/* ── TYPING DOTS ── */
-const TypingDots=()=>e('div',{style:{display:"flex",gap:5,padding:"4px 0",alignItems:"center"}},...[0,1,2].map(i=>e('div',{key:i,style:{width:7,height:7,borderRadius:"50%",background:"#9ca3af",animation:"bounce 1.2s infinite",animationDelay:i*.2+"s"}})));
-
-/* ── MSG BUBBLE ── */
-const MsgBubble=({msg,c})=>{
-  const isUser=msg.role==="user";
-  return e('div',{style:{display:"flex",flexDirection:isUser?"row-reverse":"row",gap:10,marginBottom:14,alignItems:"flex-end"}},
-    e('div',{style:{width:32,height:32,borderRadius:"50%",flexShrink:0,background:isUser?"#E24B4A":c.header,display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,marginBottom:2}},isUser?"👤":"🏢"),
-    e('div',{style:{maxWidth:"80%",background:isUser?"#E24B4A":c.surface,color:isUser?"#fff":c.text,borderRadius:isUser?"18px 18px 4px 18px":"18px 18px 18px 4px",padding:"11px 15px",fontSize:13,lineHeight:1.65,boxShadow:"0 2px 8px rgba(0,0,0,.08)",border:isUser?"none":`1.5px solid ${c.border}`,whiteSpace:"pre-wrap",wordBreak:"break-word"}},msg.content)
-  );
-};
-
-/* ── OFFICE PANEL ── */
-const OfficePanel=({c})=>{
-  const [messages,setMessages]=useState([{role:"assistant",content:"Buenos días. Soy tu oficina virtual — conozco al detalle los riders de Luar La L y Hades 66.\n\nPuedo redactarte emails, mensajes de WhatsApp y responder comunicaciones de promotoras. Pega cualquier mensaje recibido y te doy la respuesta lista. ¿Por dónde empezamos?"}]);
-  const [input,setInput]=useState("");
-  const [loading,setLoading]=useState(false);
-  const [officeTab,setOfficeTab]=useState("chat");
-  const bottomRef=useRef(null);
-  useEffect(()=>{bottomRef.current?.scrollIntoView({behavior:"smooth"});},[messages,loading]);
-
-  const send=async(text)=>{
-    const userText=text||input.trim();
-    if(!userText||loading)return;
-    setInput(""); setOfficeTab("chat");
-    const newMsgs=[...messages,{role:"user",content:userText}];
-    setMessages(newMsgs); setLoading(true);
-    try{
-      const res=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json","anthropic-dangerous-request-source":"artifact"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:1000,system:OFFICE_SYSTEM,messages:newMsgs.map(m=>({role:m.role,content:m.content}))})});
-      const data=await res.json();
-      const reply=data.content?.map(b=>b.text||"").join("")||"Sin respuesta.";
-      setMessages(prev=>[...prev,{role:"assistant",content:reply}]);
-    }catch{setMessages(prev=>[...prev,{role:"assistant",content:"Error de conexión. Intenta de nuevo."}]);}
-    setLoading(false);
-  };
-
-  return e('div',{style:{flex:1,display:"flex",flexDirection:"column",overflow:"hidden"}},
-    e('div',{style:{background:c.tabBar,borderBottom:`1.5px solid ${c.border}`,display:"flex",flexShrink:0}},
-      [["chat","💬 Chat"],["quick","⚡ Acciones"]].map(([t,l])=>e('button',{key:t,onClick:()=>setOfficeTab(t),style:{flex:1,padding:"10px 4px",border:"none",background:"transparent",fontSize:12,fontWeight:600,cursor:"pointer",color:officeTab===t?"#E24B4A":c.text3,borderBottom:officeTab===t?"2.5px solid #E24B4A":"2.5px solid transparent"}},[l]))
-    ),
-    officeTab==="quick"&&e('div',{style:{flex:1,overflow:"auto",padding:"14px 14px 32px",background:c.bg}},
-      e('div',{style:{fontSize:12,color:c.text2,marginBottom:14,lineHeight:1.5}},"Toca cualquier acción y el agente la ejecuta con los datos reales de tus riders:"),
-      e('div',{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}},
-        OFFICE_QUICK.map((a,i)=>e('button',{key:i,onClick:()=>send(a.prompt),style:{background:c.surface,border:`1.5px solid ${c.border}`,borderRadius:14,padding:"14px 12px",textAlign:"left",cursor:"pointer",display:"flex",flexDirection:"column",gap:8}},e('span',{style:{fontSize:20}},a.icon),e('span',{style:{fontSize:11,fontWeight:600,color:c.text,lineHeight:1.4}},a.label)))
-      )
-    ),
-    officeTab==="chat"&&e('div',{style:{flex:1,overflow:"auto",padding:"16px 14px 8px",background:c.bg}},
-      ...messages.map((m,i)=>e(MsgBubble,{key:i,msg:m,c})),
-      loading&&e('div',{style:{display:"flex",gap:10,marginBottom:14,alignItems:"flex-end"}},e('div',{style:{width:32,height:32,borderRadius:"50%",background:c.header,display:"flex",alignItems:"center",justifyContent:"center",fontSize:14}},"🏢"),e('div',{style:{background:c.surface,borderRadius:"18px 18px 18px 4px",padding:"12px 16px",border:`1.5px solid ${c.border}`}},e(TypingDots))),
-      e('div',{ref:bottomRef})
-    ),
-    officeTab==="chat"&&e('div',{style:{background:c.tabBar,borderTop:`1.5px solid ${c.border}`,padding:"10px 14px",display:"flex",gap:10,alignItems:"flex-end",paddingBottom:"max(10px,env(safe-area-inset-bottom))"}},
-      e('textarea',{value:input,onChange:ev=>setInput(ev.target.value),onKeyDown:ev=>{if(ev.key==="Enter"&&!ev.shiftKey){ev.preventDefault();send();}},placeholder:"Pega un mensaje recibido o dime qué necesitas redactar...",rows:2,style:{flex:1,padding:"9px 13px",borderRadius:16,border:`1.5px solid ${c.border2}`,fontSize:13,color:c.text,resize:"none",outline:"none",fontFamily:"inherit",background:c.surface2,lineHeight:1.5}}),
-      e('button',{onClick:()=>send(),disabled:!input.trim()||loading,style:{width:42,height:42,borderRadius:"50%",border:"none",background:input.trim()&&!loading?"#E24B4A":"#e5e7eb",color:"#fff",fontSize:18,cursor:input.trim()&&!loading?"pointer":"default",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}},loading?"⏳":"➤")
-    )
-  );
-};
-
-/* ── MAIN APP ── */
-function App(){
-  const [dark,toggleDark]=useTheme();
-  const c=C(dark);
-  const [shows,setShows]=useState(SHOWS);
-  const [editShow,setEditShow]=useState(null);
-  const [mktgSel,setMktgSel]=useState(null);
-  const [tab,setTab]=useState("shows");
-  const [fa,setFa]=useState("all");
-  const [fp,setFp]=useState("all");
-  const [mf,setMf]=useState("all");
-
-  const conflicts=useMemo(()=>{const ids=new Set();const byDate={};shows.forEach(s=>{if(!byDate[s.date])byDate[s.date]=[];byDate[s.date].push(s);});Object.values(byDate).forEach(day=>{if(new Set(day.map(x=>x.artist)).size>=2)day.forEach(s=>ids.add(s.id));});return ids;},[shows]);
-  const filtShows=useMemo(()=>shows.filter(s=>fa==="all"||s.artist===fa).filter(s=>fp==="all"||s.assigned.includes(fp)).sort((a,b)=>a.date.localeCompare(b.date)),[shows,fa,fp]);
-  const grouped=useMemo(()=>groupMonth(filtShows),[filtShows]);
-  const filtMktg=useMemo(()=>MKTG.filter(e=>mf==="all"||e.artist===mf).sort((a,b)=>a.date.localeCompare(b.date)),[mf]);
-  const todayMktg=MKTG.filter(ev=>isToday(ev.date));
-  const conflictDays=[...new Set(shows.filter(s=>conflicts.has(s.id)).map(s=>s.date))].length;
-  const TABS=[{id:"shows",label:"📋"},{id:"conflicts",label:"⚡"+conflictDays},{id:"marketing",label:"📣"},{id:"office",label:"🏢"},{id:"stats",label:"📊"}];
-
-  return e('div',{style:{display:"flex",flexDirection:"column",height:"100dvh",width:"100%",background:c.bg,transition:"background .2s"}},
-
-    /* HEADER */
-    e('div',{style:{background:c.header,padding:"12px 16px",display:"flex",alignItems:"center",gap:10,paddingTop:"max(12px,env(safe-area-inset-top))"}},
-      e('div',{style:{width:34,height:34,borderRadius:9,background:"#E24B4A",display:"flex",alignItems:"center",justifyContent:"center",fontSize:16}},"🎛"),
-      e('div',{style:{flex:1}},e('div',{style:{fontSize:14,fontWeight:700,color:"#fff"}},"TourDesk Pro"),e('div',{style:{fontSize:10,color:"#9ca3af"}},"Euro Tours 2026 · "+shows.length+" shows · 3 artistas")),
-      e('button',{onClick:toggleDark,style:{background:"transparent",border:"none",cursor:"pointer",fontSize:17,padding:"4px"}},dark?"☀️":"🌙"),
-      todayMktg.length>0&&e('div',{onClick:()=>setTab("marketing"),style:{background:"#E24B4A",borderRadius:20,padding:"3px 9px",fontSize:10,fontWeight:700,color:"#fff",cursor:"pointer"}},todayMktg.length+" HOY")
-    ),
-
-    /* TABS */
-    e('div',{style:{background:c.tabBar,borderBottom:`1.5px solid ${c.border}`,display:"flex",flexShrink:0}},
-      TABS.map(t=>e('button',{key:t.id,onClick:()=>setTab(t.id),style:{flex:1,padding:"11px 2px",border:"none",background:"transparent",fontSize:13,fontWeight:700,cursor:"pointer",color:tab===t.id?"#E24B4A":c.text3,borderBottom:tab===t.id?"2.5px solid #E24B4A":"2.5px solid transparent",transition:"color .15s"}},t.label))
-    ),
-
-    /* SHOWS */
-    tab==="shows"&&e('div',{style:{flex:1,overflow:"auto",padding:"12px 14px 80px"}},
-      e('div',{style:{display:"flex",gap:6,flexWrap:"wrap",marginBottom:8}},[["all","Todos","#fff","#111"],...Object.entries(ARTISTS).map(([k,a])=>[k,a.name,a.color,a.bg])].map(([k,label,color,bg])=>e(Pill,{key:k,label,active:fa===k,color:k==="all"?"#fff":color,bg:k==="all"?"#111":bg,onClick:()=>setFa(fa===k&&k!=="all"?"all":k),c}))),
-      e('div',{style:{display:"flex",gap:6,marginBottom:12,flexWrap:"wrap"}},[["all","Todos","#fff","#111"],...TEAM.map(m=>[m.id,m.initials,m.color,m.bg])].map(([k,label,color,bg])=>e(Pill,{key:k,label,active:fp===k,color:k==="all"?"#fff":color,bg:k==="all"?"#111":bg,onClick:()=>setFp(fp===k&&k!=="all"?"all":k),c}))),
-      Object.keys(grouped).sort().map(month=>e('div',{key:month,style:{marginBottom:20}},
-        e('div',{style:{fontSize:10,fontWeight:700,color:c.text3,textTransform:"uppercase",letterSpacing:1.5,marginBottom:10,display:"flex",alignItems:"center",gap:8}},e('span',null,new Date(month+"-01T12:00:00").toLocaleDateString("es-ES",{month:"long",year:"numeric"})),e('span',{style:{background:c.surface2,color:c.text2,borderRadius:20,padding:"1px 8px",fontSize:10}},grouped[month].length)),
-        grouped[month].map(s=>{
-          const a=ARTISTS[s.artist];const members=TEAM.filter(m=>s.assigned.includes(m.id));const conflict=conflicts.has(s.id);
-          return e('div',{key:s.id,onClick:()=>setEditShow(s),style:{background:conflict?(dark?"#1a0000":"#fff8f8"):c.surface,borderRadius:12,padding:"12px 14px",marginBottom:8,cursor:"pointer",border:conflict?"2px solid #fca5a5":`1.5px solid ${c.border}`}},
-            e('div',{style:{display:"flex",alignItems:"flex-start",gap:10}},
-              e('div',{style:{textAlign:"center",minWidth:34}},e('div',{style:{fontSize:17,fontWeight:800,color:c.text,lineHeight:1}},new Date(s.date+"T12:00:00").getDate()),e('div',{style:{fontSize:9,color:c.text3,textTransform:"uppercase"}},new Date(s.date+"T12:00:00").toLocaleDateString("es-ES",{month:"short"}))),
-              e('div',{style:{flex:1,minWidth:0}},e('div',{style:{display:"flex",alignItems:"center",gap:5,marginBottom:4}},e('span',{style:{background:a.bg,color:a.color,borderRadius:5,padding:"1px 7px",fontSize:10,fontWeight:700}},a.short),conflict&&e('span',{style:{fontSize:10,color:"#ef4444",fontWeight:700}},"⚡")),e('div',{style:{fontSize:14,fontWeight:700,color:c.text,marginBottom:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},s.venue),e('div',{style:{fontSize:12,color:c.text2}},"📍 "+s.city)),
-              e('div',{style:{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:6,flexShrink:0}},e('span',{style:{fontSize:10,fontWeight:600,color:s.status==="confirmed"?"#16a34a":s.status==="tbc"?"#d97706":"#6b7280"}},s.status==="confirmed"?"● Conf.":s.status==="tbc"?"● TBC":"● Listo"),e('div',{style:{display:"flex"}},members.length===0?e('span',{style:{fontSize:10,color:"#f59e0b",fontWeight:600}},"Sin asignar"):members.map((m,i)=>e('div',{key:m.id,style:{marginLeft:i>0?-7:0,border:`2px solid ${c.surface}`,borderRadius:"50%"}},e(Av,{m,size:26})))))
-            ),
-            s.notes&&e('div',{style:{marginTop:8,padding:"6px 10px",background:c.surface2,borderRadius:8,fontSize:11,color:c.text2}},"📝 "+s.notes)
-          );
-        })
-      ))
-    ),
-
-    /* CONFLICTS */
-    tab==="conflicts"&&e('div',{style:{flex:1,overflow:"auto",padding:"16px 14px 80px",background:c.bg}},
-      conflictDays===0?e('div',{style:{textAlign:"center",padding:60,color:"#16a34a"}},e('div',{style:{fontSize:36,marginBottom:10}},"✅"),e('div',{style:{fontSize:14,fontWeight:600,color:c.text}},"Sin conflictos")):
-      e('div',null,
-        e('div',{style:{background:"#fef2f2",border:"1.5px solid #fca5a5",borderRadius:12,padding:"11px 14px",marginBottom:16,fontSize:12,color:"#dc2626",fontWeight:500}},"⚡ "+conflictDays+" días con shows simultáneos. Toca para reasignar."),
-        Object.entries(groupMonth(shows.filter(s=>conflicts.has(s.id)).sort((a,b)=>a.date.localeCompare(b.date)))).sort().map(([month,ss])=>
-          e('div',{key:month,style:{marginBottom:20}},
-            e('div',{style:{fontSize:10,fontWeight:700,color:"#dc2626",textTransform:"uppercase",letterSpacing:1,marginBottom:10}},new Date(month+"-01T12:00:00").toLocaleDateString("es-ES",{month:"long"})),
-            ss.map(s=>{const a=ARTISTS[s.artist];const members=TEAM.filter(m=>s.assigned.includes(m.id));return e('div',{key:s.id,onClick:()=>setEditShow(s),style:{background:c.surface,borderRadius:12,padding:"11px 14px",marginBottom:8,cursor:"pointer",border:"2px solid #fca5a5"}},e('div',{style:{display:"flex",alignItems:"center",gap:10}},e('div',{style:{textAlign:"center",minWidth:34}},e('div',{style:{fontSize:17,fontWeight:800,color:"#dc2626"}},new Date(s.date+"T12:00:00").getDate()),e('div',{style:{fontSize:9,color:c.text3,textTransform:"uppercase"}},new Date(s.date+"T12:00:00").toLocaleDateString("es-ES",{month:"short"}))),e('div',{style:{flex:1}},e('span',{style:{background:a.bg,color:a.color,borderRadius:5,padding:"1px 7px",fontSize:10,fontWeight:700,marginBottom:4,display:"inline-block"}},a.name),e('div',{style:{fontSize:13,fontWeight:700,color:c.text}},s.venue),e('div',{style:{fontSize:11,color:c.text2}},"📍 "+s.city)),e('div',{style:{display:"flex"}},members.map((m,i)=>e('div',{key:m.id,style:{marginLeft:i>0?-7:0,border:`2px solid ${c.surface}`,borderRadius:"50%"}},e(Av,{m,size:26}))))));}))
-          )
+  return React.createElement("div",{onClick:onClose,style:{position:"fixed",inset:0,background:"rgba(0,0,0,.65)",zIndex:200,display:"flex",alignItems:"center",justifyContent:"center",padding:16}},
+    React.createElement("div",{onClick:e=>e.stopPropagation(),style:{background:"#fff",borderRadius:16,padding:20,width:"100%",maxWidth:400,maxHeight:"88vh",overflow:"auto"}},
+      React.createElement("div",{style:{fontSize:11,background:a.bg,color:a.color,borderRadius:6,padding:"2px 9px",display:"inline-block",fontWeight:700,marginBottom:8}},a.name),
+      React.createElement("div",{style:{fontSize:16,fontWeight:700,marginBottom:2}},show.venue),
+      React.createElement("div",{style:{fontSize:12,color:"#6b7280",marginBottom:14}},fmtFull(show.date)+" · "+show.city),
+      React.createElement("div",{style:{fontSize:10,fontWeight:700,color:"#9ca3af",textTransform:"uppercase",letterSpacing:1,marginBottom:8}},"Técnico"),
+      TEAM.map(m=>{
+        const on=sel.includes(m.id);
+        return React.createElement("div",{key:m.id,onClick:()=>toggle(m.id),style:{display:"flex",alignItems:"center",gap:10,padding:"8px 12px",borderRadius:10,border:on?"2px solid "+m.color:"2px solid #e5e7eb",background:on?m.bg:"#fafafa",cursor:"pointer",marginBottom:7}},
+          React.createElement(Av,{m,sz:28}),
+          React.createElement("span",{style:{fontSize:13,fontWeight:600,color:on?m.color:"#374151",flex:1}},m.name),
+          on&&React.createElement("span",{style:{color:m.color}},"✓")
+        );
+      }),
+      React.createElement("div",{style:{fontSize:10,fontWeight:700,color:"#9ca3af",textTransform:"uppercase",letterSpacing:1,margin:"12px 0 8px"}},"Estado"),
+      React.createElement("div",{style:{display:"flex",gap:7,marginBottom:12}},
+        [["confirmed","Confirmado","#16a34a"],["tbc","TBC","#d97706"],["done","Terminado","#6b7280"]].map(([v,l,c])=>
+          React.createElement("div",{key:v,onClick:()=>setStatus(v),style:{flex:1,textAlign:"center",padding:"6px",borderRadius:8,cursor:"pointer",border:status===v?"2px solid "+c:"2px solid #e5e7eb",background:status===v?c+"22":"#fafafa",color:status===v?c:"#6b7280",fontWeight:600,fontSize:11}},l)
         )
+      ),
+      React.createElement("textarea",{value:notes,onChange:e=>setNotes(e.target.value),placeholder:"Notas del show...",style:{width:"100%",padding:"8px 11px",borderRadius:9,border:"2px solid #e5e7eb",fontSize:13,resize:"none",outline:"none",fontFamily:"inherit",minHeight:56,background:"#fafafa",marginBottom:12}}),
+      React.createElement("div",{style:{display:"flex",gap:8}},
+        React.createElement("button",{onClick:onClose,style:{flex:1,padding:"10px",borderRadius:10,border:"2px solid #e5e7eb",background:"#fff",fontWeight:600,fontSize:13,cursor:"pointer"}},"Cancelar"),
+        React.createElement("button",{onClick:()=>onSave({...show,assigned:sel,status,notes}),style:{flex:2,padding:"10px",borderRadius:10,border:"none",background:"#E24B4A",color:"#fff",fontWeight:700,fontSize:13,cursor:"pointer"}},"Guardar")
       )
-    ),
-
-    /* MARKETING */
-    tab==="marketing"&&e('div',{style:{flex:1,overflow:"auto",padding:"12px 14px 80px",background:c.bg}},
-      todayMktg.length>0&&e('div',{style:{background:"#fef2f2",border:"2px solid #E24B4A",borderRadius:12,padding:"11px 14px",marginBottom:12}},e('div',{style:{fontSize:11,fontWeight:700,color:"#E24B4A",marginBottom:6}},"🔴 PUBLICAR HOY"),todayMktg.map(ev=>e('div',{key:ev.id,onClick:()=>setMktgSel(ev),style:{fontSize:12,color:c.text,cursor:"pointer",padding:"4px 0",borderBottom:"0.5px solid #fca5a5"}},TYPE_CFG[ev.type].emoji+" "+ev.venue+" — "+ev.city))),
-      MKTG.filter(ev=>ev.priority).length>0&&e('div',{style:{marginBottom:16}},e('div',{style:{fontSize:10,fontWeight:700,color:"#d97706",textTransform:"uppercase",letterSpacing:1,marginBottom:8}},"⭐ Prioritarios"),MKTG.filter(ev=>ev.priority).map(ev=>{const a=ARTISTS[ev.artist];return e('div',{key:ev.id,onClick:()=>setMktgSel(ev),style:{background:dark?"#2a2200":"#fffbeb",border:"1.5px solid #fcd34d",borderRadius:12,padding:"10px 14px",marginBottom:7,cursor:"pointer",display:"flex",alignItems:"center",gap:10}},e('div',{style:{textAlign:"center",minWidth:34}},e('div',{style:{fontSize:15,fontWeight:800,color:"#d97706"}},new Date(ev.date+"T12:00:00").getDate()),e('div',{style:{fontSize:9,color:c.text3,textTransform:"uppercase"}},new Date(ev.date+"T12:00:00").toLocaleDateString("es-ES",{month:"short"}))),e('div',{style:{flex:1}},e('span',{style:{background:a.bg,color:a.color,borderRadius:5,padding:"1px 7px",fontSize:10,fontWeight:700,display:"inline-block",marginBottom:3}},a.name),e('div',{style:{fontSize:13,fontWeight:700,color:c.text}},ev.venue),e('div',{style:{fontSize:11,color:c.text2}},"📍 "+ev.city)),e('span',{style:{fontSize:18}},TYPE_CFG[ev.type].emoji));})),
-      e('div',{style:{display:"flex",gap:6,flexWrap:"wrap",marginBottom:10}},[["all","Todos","#fff","#111"],...Object.entries(ARTISTS).map(([k,a])=>[k,a.name,a.color,a.bg])].map(([k,label,color,bg])=>e(Pill,{key:k,label,active:mf===k,color:k==="all"?"#fff":color,bg:k==="all"?"#111":bg,onClick:()=>setMf(mf===k&&k!=="all"?"all":k),c}))),
-      filtMktg.map(ev=>{const a=ARTISTS[ev.artist];const t=TYPE_CFG[ev.type];const today=isToday(ev.date);const past=isPast(ev.date);const soon=isSoon(ev.date);return e('div',{key:ev.id,onClick:()=>setMktgSel(ev),style:{background:today?(dark?"#2a0000":"#fff8f8"):c.surface,borderRadius:12,padding:"10px 14px",marginBottom:8,cursor:"pointer",border:today?"2px solid #E24B4A":soon?"2px solid #f59e0b":`1.5px solid ${c.border}`,opacity:past?.5:1}},e('div',{style:{display:"flex",alignItems:"center",gap:10}},e('div',{style:{textAlign:"center",minWidth:34}},e('div',{style:{fontSize:15,fontWeight:800,color:today?"#E24B4A":c.text}},new Date(ev.date+"T12:00:00").getDate()),e('div',{style:{fontSize:9,color:c.text3,textTransform:"uppercase"}},new Date(ev.date+"T12:00:00").toLocaleDateString("es-ES",{month:"short"}))),e('div',{style:{flex:1,minWidth:0}},e('div',{style:{display:"flex",gap:5,marginBottom:3,flexWrap:"wrap"}},e('span',{style:{background:a.bg,color:a.color,borderRadius:5,padding:"1px 7px",fontSize:10,fontWeight:700}},a.name),e('span',{style:{background:t.bg,color:t.color,borderRadius:5,padding:"1px 7px",fontSize:10,fontWeight:700}},t.emoji+" "+t.label),today&&e('span',{style:{background:"#E24B4A",color:"#fff",borderRadius:5,padding:"1px 7px",fontSize:10,fontWeight:700}},"HOY"),ev.priority&&e('span',{style:{background:"#fef3c7",color:"#d97706",borderRadius:5,padding:"1px 7px",fontSize:10,fontWeight:700}},"⭐")),e('div',{style:{fontSize:13,fontWeight:700,color:c.text,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},ev.venue),e('div',{style:{fontSize:11,color:c.text2}},"📍 "+ev.city+" · ⏰ "+ev.time)),e('span',{style:{fontSize:14,color:c.text3}},"›")));})
-    ),
-
-    /* OFFICE */
-    tab==="office"&&e(OfficePanel,{c}),
-
-    /* STATS */
-    tab==="stats"&&e('div',{style:{flex:1,overflow:"auto",padding:"16px 14px 80px",background:c.bg}},
-      e('div',{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:16}},[["Shows totales",shows.length,"#E24B4A"],["Confirmados",shows.filter(s=>s.status==="confirmed").length,"#16a34a"],["TBC",shows.filter(s=>s.status==="tbc").length,"#d97706"],["Conflictos",conflictDays,"#ef4444"]].map(([l,v,col])=>e('div',{key:l,style:{background:c.surface,borderRadius:12,padding:14,border:`1.5px solid ${c.border}`}},e('div',{style:{fontSize:11,color:c.text3,fontWeight:600,marginBottom:4}},l),e('div',{style:{fontSize:28,fontWeight:800,color:col}},v)))),
-      e('div',{style:{background:c.surface,borderRadius:12,padding:"14px 16px",border:`1.5px solid ${c.border}`,marginBottom:12}},e('div',{style:{fontSize:11,fontWeight:700,color:c.text3,textTransform:"uppercase",letterSpacing:1,marginBottom:14}},"Shows por artista"),Object.entries(ARTISTS).map(([k,a])=>{const count=shows.filter(s=>s.artist===k).length;return e('div',{key:k,style:{marginBottom:12}},e('div',{style:{display:"flex",justifyContent:"space-between",marginBottom:5}},e('span',{style:{fontSize:13,fontWeight:600,color:a.color}},a.name),e('span',{style:{fontSize:13,fontWeight:700,color:c.text}},count)),e('div',{style:{height:7,background:c.surface2,borderRadius:4}},e('div',{style:{height:7,background:a.color,borderRadius:4,width:`${(count/shows.length)*100}%`}})));})),
-      e('div',{style:{background:c.surface,borderRadius:12,padding:"14px 16px",border:`1.5px solid ${c.border}`}},e('div',{style:{fontSize:11,fontWeight:700,color:c.text3,textTransform:"uppercase",letterSpacing:1,marginBottom:14}},"Carga por técnico"),TEAM.map(m=>{const count=shows.filter(s=>s.assigned.includes(m.id)).length;return e('div',{key:m.id,style:{marginBottom:12}},e('div',{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:5}},e('div',{style:{display:"flex",alignItems:"center",gap:8}},e(Av,{m,size:26}),e('span',{style:{fontSize:13,fontWeight:600,color:c.text}},m.name)),e('span',{style:{fontSize:13,fontWeight:700,color:m.color}},count+" shows")),e('div',{style:{height:7,background:c.surface2,borderRadius:4}},e('div',{style:{height:7,background:m.color,borderRadius:4,width:`${(count/shows.length)*100}%`}})));}))
-    ),
-
-    /* MODALS */
-    editShow&&e(AssignModal,{show:editShow,onClose:()=>setEditShow(null),onSave:s=>{setShows(p=>p.map(x=>x.id===s.id?s:x));setEditShow(null);},c}),
-    mktgSel&&e(MktgModal,{event:mktgSel,onClose:()=>setMktgSel(null),c})
+    )
   );
 }
 
-ReactDOM.createRoot(document.getElementById('root')).render(e(App));
+// ── MKTG MODAL ───────────────────────────────────────────────
+function MktgModal({ev,onClose}){
+  const [cp,setCp]=React.useState(null);
+  const copy=(txt,id)=>{navigator.clipboard.writeText(txt);setCp(id);setTimeout(()=>setCp(null),2000);};
+  const t=TYPE[ev.type];const a=ARTISTS[ev.artist];
+  return React.createElement("div",{onClick:onClose,style:{position:"fixed",inset:0,background:"rgba(0,0,0,.65)",zIndex:200,display:"flex",alignItems:"flex-end"}},
+    React.createElement("div",{onClick:e=>e.stopPropagation(),style:{background:"#fff",borderRadius:"20px 20px 0 0",padding:"18px 15px 44px",width:"100%",maxHeight:"86vh",overflow:"auto"}},
+      React.createElement("div",{style:{width:38,height:4,background:"#e5e7eb",borderRadius:2,margin:"0 auto 14px"}}),
+      React.createElement("div",{style:{display:"flex",gap:6,marginBottom:5,flexWrap:"wrap"}},
+        React.createElement("span",{style:{background:a.bg,color:a.color,borderRadius:6,padding:"2px 8px",fontSize:10,fontWeight:700}},a.name),
+        React.createElement("span",{style:{background:t.b,color:t.c,borderRadius:6,padding:"2px 8px",fontSize:10,fontWeight:700}},t.e+" "+t.l),
+        ev.priority&&React.createElement("span",{style:{background:"#fef3c7",color:"#d97706",borderRadius:6,padding:"2px 8px",fontSize:10,fontWeight:700}},"⭐ Prioritario")
+      ),
+      React.createElement("div",{style:{fontSize:16,fontWeight:700,marginBottom:2}},ev.venue),
+      React.createElement("div",{style:{fontSize:11,color:"#6b7280",marginBottom:14}},"📅 "+fmtFull(ev.date)+" · 📍 "+ev.city+" · ⏰ "+ev.time),
+      React.createElement("div",{style:{background:"#f9fafb",borderRadius:11,padding:13,marginBottom:10}},
+        React.createElement("div",{style:{fontSize:10,fontWeight:700,color:"#9ca3af",textTransform:"uppercase",letterSpacing:1,marginBottom:6}},"💡 Tip"),
+        React.createElement("div",{style:{fontSize:13,color:"#374151",lineHeight:1.55}},ev.tip)
+      ),
+      React.createElement("div",{style:{background:"#f9fafb",borderRadius:11,padding:13,marginBottom:10}},
+        React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:7}},
+          React.createElement("div",{style:{fontSize:10,fontWeight:700,color:"#9ca3af",textTransform:"uppercase",letterSpacing:1}},"✍️ Caption"),
+          React.createElement("button",{onClick:()=>copy(ev.caption,"cap"),style:{padding:"3px 10px",background:cp==="cap"?"#16a34a":"#111",color:"#fff",border:"none",borderRadius:8,fontSize:11,fontWeight:600,cursor:"pointer"}},cp==="cap"?"✓ Copiado":"Copiar")
+        ),
+        React.createElement("div",{style:{fontSize:13,color:"#374151",whiteSpace:"pre-wrap",lineHeight:1.55}},ev.caption)
+      ),
+      React.createElement("div",{style:{background:"#f9fafb",borderRadius:11,padding:13}},
+        React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:7}},
+          React.createElement("div",{style:{fontSize:10,fontWeight:700,color:"#9ca3af",textTransform:"uppercase",letterSpacing:1}},"# Hashtags"),
+          React.createElement("button",{onClick:()=>copy(ev.ht,"ht"),style:{padding:"3px 10px",background:cp==="ht"?"#16a34a":"#111",color:"#fff",border:"none",borderRadius:8,fontSize:11,fontWeight:600,cursor:"pointer"}},cp==="ht"?"✓ Copiado":"Copiar")
+        ),
+        React.createElement("div",{style:{fontSize:12,color:"#6b7280",lineHeight:1.7}},ev.ht)
+      )
+    )
+  );
+}
+
+// ── SHOWS PANEL ───────────────────────────────────────────────
+function ShowsPanel({shows,setShows,conflicts}){
+  const [fa,setFa]=React.useState("all");
+  const [fp,setFp]=React.useState("all");
+  const [editing,setEditing]=React.useState(null);
+  const filtered=shows.filter(s=>fa==="all"||s.artist===fa).filter(s=>fp==="all"||s.assigned.includes(fp)).sort((a,b)=>a.date.localeCompare(b.date));
+  const grouped=groupM(filtered);
+  const pill=(label,active,onClick,color,bg)=>React.createElement("button",{onClick,style:{padding:"5px 12px",borderRadius:20,border:active?"2px solid "+color:"2px solid #e5e7eb",background:active?bg:"#fff",color:active?color:"#374151",fontWeight:600,fontSize:11,cursor:"pointer",whiteSpace:"nowrap"}},label);
+  return React.createElement("div",{style:{flex:1,overflow:"auto",padding:"11px 14px 80px"}},
+    React.createElement("div",{style:{display:"flex",gap:6,flexWrap:"wrap",marginBottom:7}},
+      pill("Todos",fa==="all",()=>setFa("all"),"#fff","#111"),
+      Object.entries(ARTISTS).map(([k,a])=>pill(a.name,fa===k,()=>setFa(fa===k?"all":k),a.color,a.bg))
+    ),
+    React.createElement("div",{style:{display:"flex",gap:6,flexWrap:"wrap",marginBottom:11}},
+      pill("Todos",fp==="all",()=>setFp("all"),"#fff","#111"),
+      TEAM.map(m=>pill(m.initials,fp===m.id,()=>setFp(fp===m.id?"all":m.id),m.color,m.bg))
+    ),
+    Object.keys(grouped).sort().map(month=>
+      React.createElement("div",{key:month,style:{marginBottom:18}},
+        React.createElement("div",{style:{fontSize:10,fontWeight:700,color:"#9ca3af",textTransform:"uppercase",letterSpacing:1.5,marginBottom:9,display:"flex",alignItems:"center",gap:7}},
+          React.createElement("span",null,monthName(month)),
+          React.createElement("span",{style:{background:"#e5e7eb",color:"#6b7280",borderRadius:20,padding:"1px 7px",fontSize:10}},grouped[month].length)
+        ),
+        grouped[month].map(s=>{
+          const a=ARTISTS[s.artist];const members=TEAM.filter(m=>s.assigned.includes(m.id));const conflict=conflicts.has(s.id);
+          return React.createElement("div",{key:s.id,onClick:()=>setEditing(s),style:{background:conflict?"#fff8f8":"#fff",borderRadius:11,padding:"11px 13px",marginBottom:7,cursor:"pointer",border:conflict?"2px solid #fca5a5":"1.5px solid #f3f4f6",boxShadow:"0 1px 3px rgba(0,0,0,.04)"}},
+            React.createElement("div",{style:{display:"flex",alignItems:"flex-start",gap:9}},
+              React.createElement("div",{style:{textAlign:"center",minWidth:32}},
+                React.createElement("div",{style:{fontSize:16,fontWeight:800,lineHeight:1}},new Date(s.date+"T12:00:00").getDate()),
+                React.createElement("div",{style:{fontSize:9,color:"#9ca3af",textTransform:"uppercase"}},new Date(s.date+"T12:00:00").toLocaleDateString("es-ES",{month:"short"}))
+              ),
+              React.createElement("div",{style:{flex:1,minWidth:0}},
+                React.createElement("div",{style:{display:"flex",alignItems:"center",gap:5,marginBottom:3}},
+                  React.createElement("span",{style:{background:a.bg,color:a.color,borderRadius:5,padding:"1px 6px",fontSize:10,fontWeight:700}},a.short),
+                  conflict&&React.createElement("span",{style:{fontSize:10,color:"#dc2626",fontWeight:700}},"⚡")
+                ),
+                React.createElement("div",{style:{fontSize:13,fontWeight:700,marginBottom:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},s.venue),
+                React.createElement("div",{style:{fontSize:11,color:"#6b7280"}},"📍 "+s.city)
+              ),
+              React.createElement("div",{style:{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:5}},
+                React.createElement(StatusDot,{s:s.status}),
+                React.createElement("div",{style:{display:"flex"}},
+                  members.length===0
+                    ?React.createElement("span",{style:{fontSize:10,color:"#f59e0b",fontWeight:600}},"Sin asignar")
+                    :members.map((m,i)=>React.createElement("div",{key:m.id,style:{marginLeft:i>0?-7:0,border:"2px solid #fff",borderRadius:"50%"}},React.createElement(Av,{m,sz:24})))
+                )
+              )
+            ),
+            s.notes&&React.createElement("div",{style:{marginTop:7,padding:"5px 9px",background:"#f9fafb",borderRadius:7,fontSize:11,color:"#6b7280"}},"📝 "+s.notes)
+          );
+        })
+      )
+    ),
+    editing&&React.createElement(AssignModal,{show:editing,onClose:()=>setEditing(null),onSave:s=>{setShows(p=>p.map(x=>x.id===s.id?s:x));setEditing(null);}})
+  );
+}
+
+// ── MARKETING PANEL ───────────────────────────────────────────
+function MktgPanel(){
+  const [fa,setFa]=React.useState("all");
+  const [sel,setSel]=React.useState(null);
+  const filtered=MKTG.filter(e=>fa==="all"||e.artist===fa).sort((a,b)=>a.date.localeCompare(b.date));
+  const todayList=MKTG.filter(e=>isToday(e.date));
+  const priList=MKTG.filter(e=>e.priority);
+  const pill=(label,active,onClick,color,bg)=>React.createElement("button",{onClick,style:{padding:"5px 12px",borderRadius:20,border:active?"2px solid "+color:"2px solid #e5e7eb",background:active?bg:"#fff",color:active?color:"#374151",fontWeight:600,fontSize:11,cursor:"pointer",whiteSpace:"nowrap"}},label);
+  const card=(ev,extra={})=>{
+    const a=ARTISTS[ev.artist];const t=TYPE[ev.type];const today=isToday(ev.date);const past=isPast(ev.date);
+    return React.createElement("div",{key:ev.id,onClick:()=>setSel(ev),style:{background:today?"#fff8f8":"#fff",borderRadius:11,padding:"10px 13px",marginBottom:7,cursor:"pointer",border:today?"2px solid #E24B4A":"1.5px solid #f3f4f6",opacity:past?.5:1,...extra}},
+      React.createElement("div",{style:{display:"flex",alignItems:"center",gap:9}},
+        React.createElement("div",{style:{textAlign:"center",minWidth:32}},
+          React.createElement("div",{style:{fontSize:15,fontWeight:800,color:today?"#E24B4A":"#111",lineHeight:1}},new Date(ev.date+"T12:00:00").getDate()),
+          React.createElement("div",{style:{fontSize:9,color:"#9ca3af",textTransform:"uppercase"}},new Date(ev.date+"T12:00:00").toLocaleDateString("es-ES",{month:"short"}))
+        ),
+        React.createElement("div",{style:{flex:1,minWidth:0}},
+          React.createElement("div",{style:{display:"flex",gap:5,marginBottom:3,flexWrap:"wrap"}},
+            React.createElement("span",{style:{background:a.bg,color:a.color,borderRadius:5,padding:"1px 6px",fontSize:10,fontWeight:700}},a.name),
+            React.createElement("span",{style:{background:t.b,color:t.c,borderRadius:5,padding:"1px 6px",fontSize:10,fontWeight:700}},t.e+" "+t.l),
+            today&&React.createElement("span",{style:{background:"#E24B4A",color:"#fff",borderRadius:5,padding:"1px 6px",fontSize:10,fontWeight:700}},"HOY"),
+            ev.priority&&React.createElement("span",{style:{background:"#fef3c7",color:"#d97706",borderRadius:5,padding:"1px 6px",fontSize:10,fontWeight:700}},"⭐")
+          ),
+          React.createElement("div",{style:{fontSize:13,fontWeight:700,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},ev.venue),
+          React.createElement("div",{style:{fontSize:11,color:"#6b7280"}},"📍 "+ev.city)
+        ),
+        React.createElement("span",{style:{fontSize:14,color:"#9ca3af"}},"›")
+      )
+    );
+  };
+  return React.createElement("div",{style:{flex:1,overflow:"auto",padding:"11px 14px 80px"}},
+    todayList.length>0&&React.createElement("div",{style:{background:"#fef2f2",border:"2px solid #E24B4A",borderRadius:11,padding:"10px 13px",marginBottom:11}},
+      React.createElement("div",{style:{fontSize:11,fontWeight:700,color:"#E24B4A",marginBottom:5}},"🔴 PUBLICAR HOY"),
+      todayList.map(ev=>React.createElement("div",{key:ev.id,onClick:()=>setSel(ev),style:{fontSize:12,cursor:"pointer",padding:"3px 0",borderBottom:"0.5px solid #fca5a5"}},TYPE[ev.type].e+" "+ev.venue))
+    ),
+    priList.length>0&&React.createElement("div",{style:{marginBottom:13}},
+      React.createElement("div",{style:{fontSize:10,fontWeight:700,color:"#d97706",textTransform:"uppercase",letterSpacing:1,marginBottom:7}},"⭐ Prioritarios"),
+      priList.map(ev=>card(ev,{background:"#fffbeb",border:"1.5px solid #fcd34d"}))
+    ),
+    React.createElement("div",{style:{display:"flex",gap:6,flexWrap:"wrap",marginBottom:9}},
+      pill("Todos",fa==="all",()=>setFa("all"),"#fff","#111"),
+      Object.entries(ARTISTS).map(([k,a])=>pill(a.name,fa===k,()=>setFa(fa===k?"all":k),a.color,a.bg))
+    ),
+    React.createElement("div",{style:{fontSize:10,fontWeight:700,color:"#9ca3af",textTransform:"uppercase",letterSpacing:1,marginBottom:7}},"Todos los posts"),
+    filtered.map(ev=>card(ev)),
+    sel&&React.createElement(MktgModal,{ev:sel,onClose:()=>setSel(null)})
+  );
+}
+
+// ── OFFICE PANEL ──────────────────────────────────────────────
+const OFFICE_QUICK=[
+  {e:"📧",l:"Email confirmar show Luar La L",p:"Necesito un email a una promotora confirmando un show de Luar La L. Pídeme los datos que falten."},
+  {e:"🎛",l:"Checklist rider Luar La L",p:"Genera el checklist completo de verificación del rider técnico de Luar La L."},
+  {e:"🎛",l:"Checklist rider Hades 66",p:"Genera el checklist completo de verificación del rider técnico de Hades 66."},
+  {e:"💬",l:"WhatsApp a Andrés Hernández",p:"Redacta un WhatsApp para Andrés Hernández sobre un show de Luar La L. Pídeme los datos."},
+  {e:"💬",l:"WhatsApp a Miguel García",p:"Redacta un WhatsApp para Miguel García sobre un show de Hades 66. Pídeme los datos."},
+  {e:"⚠️",l:"Venue no cumple el rider",p:"La promotora dice que no tienen el sistema PA del rider de Luar La L. ¿Cómo respondo?"},
+  {e:"📋",l:"Solicitar counter-rider",p:"Redacta un email solicitando el counter-rider al venue para verificar el equipo disponible."},
+  {e:"📝",l:"Responder email recibido",p:"Voy a pegarte un email recibido de una promotora. Ayúdame a redactar la respuesta."},
+  {e:"🏨",l:"Recordatorio hotel y transporte",p:"Email recordando requerimientos de hotel y transporte del rider de Luar La L. Show en 2 semanas."},
+  {e:"🚨",l:"Aviso urgente cambio horario",p:"Redacta un mensaje urgente notificando un cambio de horario en el soundcheck."},
+];
+function OfficePanel(){
+  const [msgs,setMsgs]=React.useState([{role:"assistant",content:"Buenos días. Soy tu oficina virtual — conozco al detalle los riders de Luar La L y Hades 66.\n\nPuedo redactarte emails, WhatsApp y responder comunicaciones de promotoras. Pega cualquier mensaje recibido y te doy la respuesta lista.\n\n¿Por dónde empezamos?"}]);
+  const [input,setInput]=React.useState("");
+  const [loading,setLoading]=React.useState(false);
+  const [oTab,setOTab]=React.useState("chat");
+  const bottom=React.useRef(null);
+  React.useEffect(()=>{bottom.current&&bottom.current.scrollIntoView({behavior:"smooth"});},[msgs,loading]);
+  const send=async(text)=>{
+    const t=text||input.trim(); if(!t||loading)return;
+    setInput(""); setOTab("chat");
+    const nm=[...msgs,{role:"user",content:t}]; setMsgs(nm); setLoading(true);
+    try{
+      const r=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json","anthropic-dangerous-request-source":"artifact"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:1000,system:OFFICE_SYS,messages:nm.map(m=>({role:m.role,content:m.content}))})});
+      const d=await r.json();
+      setMsgs(p=>[...p,{role:"assistant",content:d.content?.map(b=>b.text||"").join("")||"Sin respuesta."}]);
+    }catch{setMsgs(p=>[...p,{role:"assistant",content:"Error de conexión. Intenta de nuevo."}]);}
+    setLoading(false);
+  };
+  return React.createElement("div",{style:{flex:1,display:"flex",flexDirection:"column",overflow:"hidden"}},
+    React.createElement("div",{style:{background:"#fff",borderBottom:"1.5px solid #f3f4f6",display:"flex",flexShrink:0}},
+      [["chat","💬 Chat"],["quick","⚡ Acciones"]].map(([t,l])=>React.createElement("button",{key:t,onClick:()=>setOTab(t),style:{flex:1,padding:"10px",border:"none",background:"transparent",fontSize:12,fontWeight:600,cursor:"pointer",color:oTab===t?"#E24B4A":"#9ca3af",borderBottom:oTab===t?"2.5px solid #E24B4A":"2.5px solid transparent"}},l))
+    ),
+    oTab==="quick"&&React.createElement("div",{style:{flex:1,overflow:"auto",padding:"13px 14px 30px",background:"#f8f9fa"}},
+      React.createElement("div",{style:{fontSize:12,color:"#6b7280",marginBottom:12}},"Toca una acción y el agente la ejecuta con los datos reales de tus riders:"),
+      React.createElement("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:9}},
+        OFFICE_QUICK.map((a,i)=>React.createElement("button",{key:i,onClick:()=>send(a.p),style:{background:"#fff",border:"1.5px solid #f3f4f6",borderRadius:13,padding:"13px 11px",textAlign:"left",cursor:"pointer",display:"flex",flexDirection:"column",gap:7}},React.createElement("span",{style:{fontSize:20}},a.e),React.createElement("span",{style:{fontSize:11,fontWeight:600,color:"#374151",lineHeight:1.35}},a.l)))
+      )
+    ),
+    oTab==="chat"&&React.createElement("div",{style:{flex:1,overflow:"auto",padding:"14px 14px 6px",background:"#f8f9fa"}},
+      msgs.map((m,i)=>{
+        const isU=m.role==="user";
+        return React.createElement("div",{key:i,style:{display:"flex",flexDirection:isU?"row-reverse":"row",gap:9,marginBottom:13,alignItems:"flex-end"}},
+          React.createElement("div",{style:{width:30,height:30,borderRadius:"50%",background:isU?"#E24B4A":"#111",display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,flexShrink:0}},isU?"👤":"🏢"),
+          React.createElement("div",{style:{maxWidth:"80%",background:isU?"#E24B4A":"#fff",color:isU?"#fff":"#1a1a1a",borderRadius:isU?"16px 16px 4px 16px":"16px 16px 16px 4px",padding:"10px 14px",fontSize:13,lineHeight:1.6,boxShadow:"0 2px 8px rgba(0,0,0,.07)",border:isU?"none":"1.5px solid #f0f0f0",whiteSpace:"pre-wrap",wordBreak:"break-word"}},m.content)
+        );
+      }),
+      loading&&React.createElement("div",{style:{display:"flex",gap:9,marginBottom:13,alignItems:"flex-end"}},
+        React.createElement("div",{style:{width:30,height:30,borderRadius:"50%",background:"#111",display:"flex",alignItems:"center",justifyContent:"center",fontSize:13}},"🏢"),
+        React.createElement("div",{style:{background:"#fff",borderRadius:"16px 16px 16px 4px",padding:"12px 14px",border:"1.5px solid #f0f0f0",display:"flex",gap:5,alignItems:"center"}},
+          ...[0,1,2].map(i=>React.createElement("div",{key:i,style:{width:7,height:7,borderRadius:"50%",background:"#9ca3af",animation:"bounce 1.2s infinite",animationDelay:i*.2+"s"}}))
+        )
+      ),
+      React.createElement("div",{ref:bottom})
+    ),
+    oTab==="chat"&&React.createElement("div",{style:{background:"#fff",borderTop:"1.5px solid #f3f4f6",padding:"10px 14px",display:"flex",gap:9,alignItems:"flex-end",paddingBottom:"max(10px,env(safe-area-inset-bottom))"}},
+      React.createElement("textarea",{value:input,onChange:e=>setInput(e.target.value),onKeyDown:e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();send();}},placeholder:"Pega un mensaje recibido o dime qué necesitas redactar...",rows:2,style:{flex:1,padding:"9px 12px",borderRadius:14,border:"1.5px solid #e5e7eb",fontSize:13,resize:"none",outline:"none",fontFamily:"inherit",background:"#f9fafb",lineHeight:1.5,color:"#1a1a1a"}}),
+      React.createElement("button",{onClick:()=>send(),disabled:!input.trim()||loading,style:{width:40,height:40,borderRadius:"50%",border:"none",background:input.trim()&&!loading?"#E24B4A":"#e5e7eb",color:"#fff",fontSize:17,cursor:input.trim()&&!loading?"pointer":"default",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}},loading?"⏳":"➤")
+    )
+  );
+}
+
+// ── STATS PANEL ───────────────────────────────────────────────
+function StatsPanel({shows,conflicts}){
+  const confDays=[...new Set(shows.filter(s=>conflicts.has(s.id)).map(s=>s.date))].length;
+  return React.createElement("div",{style:{flex:1,overflow:"auto",padding:"14px 14px 80px",background:"#f8f9fa"}},
+    React.createElement("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:9,marginBottom:13}},
+      [["Shows totales",shows.length,"#E24B4A"],["Confirmados",shows.filter(s=>s.status==="confirmed").length,"#16a34a"],["TBC",shows.filter(s=>s.status==="tbc").length,"#d97706"],["Conflictos",confDays,"#ef4444"]].map(([l,v,c])=>
+        React.createElement("div",{key:l,style:{background:"#fff",borderRadius:11,padding:13,border:"1.5px solid #f3f4f6"}},React.createElement("div",{style:{fontSize:11,color:"#9ca3af",fontWeight:600,marginBottom:3}},l),React.createElement("div",{style:{fontSize:26,fontWeight:800,color:c}},v))
+      )
+    ),
+    React.createElement("div",{style:{background:"#fff",borderRadius:11,padding:"13px 15px",border:"1.5px solid #f3f4f6",marginBottom:10}},
+      React.createElement("div",{style:{fontSize:10,fontWeight:700,color:"#9ca3af",textTransform:"uppercase",letterSpacing:1,marginBottom:12}},"Shows por artista"),
+      Object.entries(ARTISTS).map(([k,a])=>{const cnt=shows.filter(s=>s.artist===k).length;return React.createElement("div",{key:k,style:{marginBottom:10}},React.createElement("div",{style:{display:"flex",justifyContent:"space-between",marginBottom:4}},React.createElement("span",{style:{fontSize:13,fontWeight:600,color:a.color}},a.name),React.createElement("span",{style:{fontSize:13,fontWeight:700}},cnt)),React.createElement("div",{style:{height:6,background:"#f3f4f6",borderRadius:3}},React.createElement("div",{style:{height:6,background:a.color,borderRadius:3,width:(cnt/shows.length*100)+"%"}})));})
+    ),
+    React.createElement("div",{style:{background:"#fff",borderRadius:11,padding:"13px 15px",border:"1.5px solid #f3f4f6"}},
+      React.createElement("div",{style:{fontSize:10,fontWeight:700,color:"#9ca3af",textTransform:"uppercase",letterSpacing:1,marginBottom:12}},"Carga por técnico"),
+      TEAM.map(m=>{const cnt=shows.filter(s=>s.assigned.includes(m.id)).length;return React.createElement("div",{key:m.id,style:{marginBottom:10}},React.createElement("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}},React.createElement("div",{style:{display:"flex",alignItems:"center",gap:7}},React.createElement(Av,{m,sz:24}),React.createElement("span",{style:{fontSize:13,fontWeight:600}},m.name)),React.createElement("span",{style:{fontSize:13,fontWeight:700,color:m.color}},cnt+" shows")),React.createElement("div",{style:{height:6,background:"#f3f4f6",borderRadius:3}},React.createElement("div",{style:{height:6,background:m.color,borderRadius:3,width:(cnt/shows.length*100)+"%"}})));})
+    )
+  );
+}
+
+// ── CONFLICTS PANEL ───────────────────────────────────────────
+function ConflictsPanel({shows,conflicts,setShows}){
+  const [editing,setEditing]=React.useState(null);
+  const confShows=shows.filter(s=>conflicts.has(s.id)).sort((a,b)=>a.date.localeCompare(b.date));
+  const grouped=groupM(confShows);
+  const confDays=Object.keys(grouped).length;
+  if(confDays===0)return React.createElement("div",{style:{flex:1,display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:10,color:"#16a34a",background:"#f8f9fa"}},React.createElement("div",{style:{fontSize:40}},"✅"),React.createElement("div",{style:{fontSize:14,fontWeight:600}},"Sin conflictos"));
+  return React.createElement("div",{style:{flex:1,overflow:"auto",padding:"14px 14px 80px",background:"#f8f9fa"}},
+    React.createElement("div",{style:{background:"#fef2f2",border:"1.5px solid #fca5a5",borderRadius:11,padding:"10px 13px",marginBottom:13,fontSize:12,color:"#dc2626",fontWeight:500}},"⚡ "+confDays+" días con shows simultáneos. Toca para reasignar."),
+    Object.keys(grouped).sort().map(month=>
+      React.createElement("div",{key:month,style:{marginBottom:18}},
+        React.createElement("div",{style:{fontSize:10,fontWeight:700,color:"#dc2626",textTransform:"uppercase",letterSpacing:1,marginBottom:8}},monthName(month)),
+        grouped[month].map(s=>{
+          const a=ARTISTS[s.artist];const members=TEAM.filter(m=>s.assigned.includes(m.id));
+          return React.createElement("div",{key:s.id,onClick:()=>setEditing(s),style:{background:"#fff",borderRadius:11,padding:"10px 13px",marginBottom:7,cursor:"pointer",border:"2px solid #fca5a5"}},
+            React.createElement("div",{style:{display:"flex",alignItems:"center",gap:9}},
+              React.createElement("div",{style:{textAlign:"center",minWidth:32}},React.createElement("div",{style:{fontSize:16,fontWeight:800,color:"#dc2626",lineHeight:1}},new Date(s.date+"T12:00:00").getDate()),React.createElement("div",{style:{fontSize:9,color:"#9ca3af",textTransform:"uppercase"}},new Date(s.date+"T12:00:00").toLocaleDateString("es-ES",{month:"short"}))),
+              React.createElement("div",{style:{flex:1}},React.createElement("span",{style:{background:a.bg,color:a.color,borderRadius:5,padding:"1px 6px",fontSize:10,fontWeight:700,display:"inline-block",marginBottom:3}},a.name),React.createElement("div",{style:{fontSize:13,fontWeight:700}},s.venue),React.createElement("div",{style:{fontSize:11,color:"#6b7280"}},"📍 "+s.city)),
+              React.createElement("div",{style:{display:"flex"}},members.map((m,i)=>React.createElement("div",{key:m.id,style:{marginLeft:i>0?-7:0,border:"2px solid #fff",borderRadius:"50%"}},React.createElement(Av,{m,sz:24}))))
+            )
+          );
+        })
+      )
+    ),
+    editing&&React.createElement(AssignModal,{show:editing,onClose:()=>setEditing(null),onSave:s=>{setShows(p=>p.map(x=>x.id===s.id?s:x));setEditing(null);}})
+  );
+}
+
+// ── MAIN APP ──────────────────────────────────────────────────
+function App(){
+  const [dark,setDark]=React.useState(()=>localStorage.getItem("td_dark")==="1");
+  React.useEffect(()=>{document.body.style.background=dark?"#0d0d0d":"#f8f9fa";localStorage.setItem("td_dark",dark?"1":"0");},[dark]);
+  const [shows,setShows]=React.useState(ALL_SHOWS);
+  const [tab,setTab]=React.useState("shows");
+  const todayMktg=MKTG.filter(e=>isToday(e.date));
+  const conflicts=React.useMemo(()=>{
+    const ids=new Set();const byDate={};
+    shows.forEach(s=>{if(!byDate[s.date])byDate[s.date]=[];byDate[s.date].push(s);});
+    Object.values(byDate).forEach(day=>{if(new Set(day.map(x=>x.artist)).size>=2)day.forEach(s=>ids.add(s.id));});
+    return ids;
+  },[shows]);
+  const confDays=[...new Set(shows.filter(s=>conflicts.has(s.id)).map(s=>s.date))].length;
+  const TABS=[{id:"shows",l:"📋"},{id:"conflicts",l:"⚡"+confDays},{id:"marketing",l:"📣"},{id:"office",l:"🏢"},{id:"stats",l:"📊"}];
+  const hdr="#111"; const tbar=dark?"#111":"#fff"; const tbdr=dark?"#2a2a2a":"#f3f4f6";
+  return React.createElement("div",{style:{display:"flex",flexDirection:"column",height:"100dvh",width:"100%",background:dark?"#0d0d0d":"#f8f9fa"}},
+    React.createElement("div",{style:{background:hdr,padding:"12px 15px",display:"flex",alignItems:"center",gap:10,paddingTop:"max(12px,env(safe-area-inset-top))"}},
+      React.createElement("div",{style:{width:33,height:33,borderRadius:9,background:"#E24B4A",display:"flex",alignItems:"center",justifyContent:"center",fontSize:15}},"🎛"),
+      React.createElement("div",{style:{flex:1}},React.createElement("div",{style:{fontSize:14,fontWeight:700,color:"#fff"}},"TourDesk Pro"),React.createElement("div",{style:{fontSize:10,color:"#9ca3af"}},shows.length+" shows · Luar La L · Beele · Hades 66")),
+      React.createElement("button",{onClick:()=>setDark(d=>!d),style:{background:"none",border:"none",cursor:"pointer",fontSize:16,padding:"3px 6px"}},dark?"☀️":"🌙"),
+      todayMktg.length>0&&React.createElement("div",{onClick:()=>setTab("marketing"),style:{background:"#E24B4A",borderRadius:20,padding:"3px 9px",fontSize:10,fontWeight:700,color:"#fff",cursor:"pointer"}},todayMktg.length+" HOY")
+    ),
+    React.createElement("div",{style:{background:tbar,borderBottom:"1.5px solid "+tbdr,display:"flex",flexShrink:0}},
+      TABS.map(t=>React.createElement("button",{key:t.id,onClick:()=>setTab(t.id),style:{flex:1,padding:"11px 2px",border:"none",background:"transparent",fontSize:13,fontWeight:700,cursor:"pointer",color:tab===t.id?"#E24B4A":dark?"#555":"#9ca3af",borderBottom:tab===t.id?"2.5px solid #E24B4A":"2.5px solid transparent"}},t.l))
+    ),
+    tab==="shows"&&React.createElement(ShowsPanel,{shows,setShows,conflicts}),
+    tab==="conflicts"&&React.createElement(ConflictsPanel,{shows,conflicts,setShows}),
+    tab==="marketing"&&React.createElement(MktgPanel),
+    tab==="office"&&React.createElement(OfficePanel),
+    tab==="stats"&&React.createElement(StatsPanel,{shows,conflicts})
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(React.createElement(App));
 </script>
 </body>
 </html>
