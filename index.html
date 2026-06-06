@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+  <meta name="apple-mobile-web-app-title" content="TourDesk Pro"/>
+  <title>TourDesk Pro</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+    body{font-family:system-ui,-apple-system,sans-serif;background:#f8f9fa;overscroll-behavior:none}
+    #root{height:100dvh;display:flex;flex-direction:column}
+  </style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useMemo, useRef, useEffect } = React;
+
+const TEAM = [
+  { id:"yo", name:"Yo (FOH)",         initials:"YO", color:"#E24B4A", bg:"#FCEBEB" },
+  { id:"w1", name:"Andrés Hernández", initials:"AH", color:"#185FA5", bg:"#E6F1FB" },
+  { id:"w2", name:"Trabajador 2",     initials:"W2", color:"#7C3AED", bg:"#EDE9FE" },
+];
+const ARTISTS = {
+  luar:  { name:"Luar La L", color:"#E24B4A", bg:"#FCEBEB", short:"LL" },
+  beele: { name:"Beele",     color:"#0F6E56", bg:"#E1F5EE", short:"BE" },
+  hades: { name:"Hades 66",  color:"#7C3AED", bg:"#EDE9FE", short:"H6" },
+};
+
+const INITIAL_SHOWS = [
+  {id:1,  date:"2025-06-23",artist:"luar", venue:"Beach Club Medusa",    city:"Cullera",             status:"confirmed",assigned:["yo"],notes:""},
+  {id:2,  date:"2025-06-25",artist:"luar", venue:"Shoko",                city:"Barcelona",            status:"confirmed",assigned:["yo"],notes:""},
+  {id:3,  date:"2025-06-26",artist:"luar", venue:"Santana 27",           city:"Bilbao",               status:"confirmed",assigned:["yo"],notes:""},
+  {id:4,  date:"2025-06-27",artist:"luar", venue:"Big Ben",              city:"Lleida",               status:"confirmed",assigned:["yo"],notes:""},
+  {id:5,  date:"2025-06-28",artist:"luar", venue:"Fitz",                 city:"Marbella",             status:"confirmed",assigned:["yo"],notes:""},
+  {id:6,  date:"2025-07-02",artist:"luar", venue:"Shoko",                city:"Madrid",               status:"confirmed",assigned:["w1"],notes:""},
+  {id:7,  date:"2025-07-03",artist:"luar", venue:"Momart",               city:"Cádiz",                status:"confirmed",assigned:["w1"],notes:""},
+  {id:8,  date:"2025-07-05",artist:"luar", venue:"RBF",                  city:"Alicante",             status:"confirmed",assigned:["w1"],notes:""},
+  {id:9,  date:"2025-07-07",artist:"luar", venue:"Amok",                 city:"Mallorca",             status:"confirmed",assigned:["w1"],notes:""},
+  {id:10, date:"2025-07-08",artist:"luar", venue:"Cosa Nuestra",         city:"Málaga",               status:"confirmed",assigned:["w1"],notes:""},
+  {id:11, date:"2025-07-09",artist:"luar", venue:"Velice",               city:"Torrevieja",           status:"confirmed",assigned:["w1"],notes:""},
+  {id:12, date:"2025-07-10",artist:"luar", venue:"Noura",                city:"Sevilla",              status:"confirmed",assigned:["w1"],notes:""},
+  {id:13, date:"2025-07-11",artist:"luar", venue:"Plaza de Toros",       city:"Melilla",              status:"confirmed",assigned:["w1"],notes:""},
+  {id:14, date:"2025-07-12",artist:"luar", venue:"Live",                 city:"Punta Umbría",         status:"confirmed",assigned:["w1"],notes:""},
+  {id:15, date:"2025-07-15",artist:"luar", venue:"Cortijo Los Canos",    city:"Sotogrande",           status:"confirmed",assigned:["w1"],notes:""},
+  {id:16, date:"2025-07-18",artist:"luar", venue:"TBC",                  city:"—",                    status:"tbc",      assigned:["w1"],notes:""},
+  {id:17, date:"2025-07-19",artist:"luar", venue:"TBC",                  city:"—",                    status:"tbc",      assigned:["w1"],notes:""},
+  {id:18, date:"2025-07-24",artist:"luar", venue:"Ku",                   city:"Benidorm",             status:"confirmed",assigned:["w1"],notes:""},
+  {id:19, date:"2025-07-25",artist:"luar", venue:"Festival ZEVR",        city:"Cullera",              status:"confirmed",assigned:["w1"],notes:""},
+  {id:20, date:"2025-07-28",artist:"luar", venue:"TBC",                  city:"—",                    status:"tbc",      assigned:["w1"],notes:""},
+  {id:21, date:"2025-07-29",artist:"luar", venue:"Condado",              city:"Dénia",                status:"confirmed",assigned:["w1"],notes:""},
+  {id:22, date:"2025-07-31",artist:"luar", venue:"Albariño",             city:"Cambados",             status:"confirmed",assigned:["w1"],notes:""},
+  {id:23, date:"2025-08-01",artist:"luar", venue:"Festival Mediterránea",city:"Girona",               status:"confirmed",assigned:["w1"],notes:""},
+  {id:24, date:"2025-07-02",artist:"beele",venue:"Pacha Disco Club",     city:"Ibiza",                status:"confirmed",assigned:["yo"],notes:""},
+  {id:25, date:"2025-07-04",artist:"beele",venue:"Latin Fest: Mora y Turizo",city:"Benidorm",         status:"confirmed",assigned:["yo"],notes:""},
+  {id:26, date:"2025-07-05",artist:"beele",venue:"Praia do Aterro",      city:"Lisboa",               status:"confirmed",assigned:["yo"],notes:""},
+  {id:27, date:"2025-07-09",artist:"beele",venue:"Reggaeton Nigh",       city:"Zúrich",               status:"confirmed",assigned:["yo"],notes:""},
+  {id:28, date:"2025-07-10",artist:"beele",venue:"Movistar Arena · Farruko",city:"Madrid",            status:"confirmed",assigned:["yo"],notes:""},
+  {id:29, date:"2025-07-11",artist:"beele",venue:"Movistar Arena · Farruko",city:"Madrid",            status:"tbc",      assigned:["yo"],notes:""},
+  {id:30, date:"2025-07-12",artist:"beele",venue:"Parque Hermanos Castro",city:"Gijón",               status:"confirmed",assigned:["yo"],notes:""},
+  {id:31, date:"2025-07-15",artist:"beele",venue:"Milan Latin Fest",     city:"Milán",                status:"confirmed",assigned:["yo"],notes:""},
+  {id:32, date:"2025-07-17",artist:"beele",venue:"Latin Fest Valencia",  city:"Valencia",             status:"confirmed",assigned:["yo"],notes:""},
+  {id:33, date:"2025-07-18",artist:"beele",venue:"Recinto Ferial",       city:"Vera, Almería",        status:"confirmed",assigned:["yo"],notes:""},
+  {id:34, date:"2025-07-23",artist:"beele",venue:"Estadio Olímpico · Don Omar",city:"Barcelona",      status:"confirmed",assigned:["yo"],notes:""},
+  {id:35, date:"2025-07-24",artist:"beele",venue:"Anexo GranCa · Farruko",city:"Gran Canaria",        status:"confirmed",assigned:["yo"],notes:""},
+  {id:36, date:"2025-07-25",artist:"beele",venue:"El Muelle · Yandel",   city:"Tenerife",             status:"confirmed",assigned:["yo"],notes:""},
+  {id:37, date:"2025-07-26",artist:"beele",venue:"Urban Paradise · Omar Courtz",city:"Málaga",        status:"confirmed",assigned:["yo"],notes:""},
+  {id:38, date:"2025-07-10",artist:"hades",venue:"White Beach",          city:"Huelva",               status:"confirmed",assigned:["w2"],notes:""},
+  {id:39, date:"2025-07-11",artist:"hades",venue:"RBF",                  city:"Santander",            status:"tbc",      assigned:["w2"],notes:""},
+  {id:40, date:"2025-07-12",artist:"hades",venue:"Fitz",                 city:"Marbella",             status:"confirmed",assigned:["w2"],notes:""},
+  {id:41, date:"2025-07-15",artist:"hades",venue:"Fitz",                 city:"Madrid",               status:"confirmed",assigned:["w2"],notes:""},
+  {id:42, date:"2025-07-16",artist:"hades",venue:"Shoko",                city:"Barcelona",            status:"confirmed",assigned:["w2"],notes:""},
+  {id:43, date:"2025-07-17",artist:"hades",venue:"Waka",                 city:"Sabadell",             status:"confirmed",assigned:["w2"],notes:""},
+  {id:44, date:"2025-07-19",artist:"hades",venue:"RBF",                  city:"Madrid",               status:"tbc",      assigned:["w2"],notes:""},
+  {id:45, date:"2025-07-21",artist:"hades",venue:"Amok",                 city:"Mallorca",             status:"tbc",      assigned:["w2"],notes:""},
+  {id:46, date:"2025-07-22",artist:"hades",venue:"Playa Aruba",          city:"Torremolinos",         status:"confirmed",assigned:["w2"],notes:""},
+  {id:47, date:"2025-07-23",artist:"hades",venue:"Barraka",              city:"Gandía",               status:"confirmed",assigned:["w2"],notes:""},
+  {id:48, date:"2025-07-24",artist:"hades",venue:"El Ruedo",             city:"Roquetas del Mar",     status:"confirmed",assigned:["w2"],notes:""},
+  {id:49, date:"2025-07-25",artist:"hades",venue:"Puro Latino",          city:"Puerto de Santa María",status:"confirmed",assigned:["w2"],notes:""},
+];
+
+const MKTG = [
+  {id:"mk1", date:"2025-06-23",artist:"luar", city:"Cullera",     venue:"Beach Club Medusa",       type:"reel",    time:"Antes del soundcheck", caption:"Arrancamos 🔴\nEuro Tour 2026 en marcha 🌍\n📍 Cullera\n@luar_lal",                                                                                  hashtags:"#soundengineer #tourlife #liveSound #luarlal #europatour #fohlife #audioEngineer",                                                       tip:"20 segundos del setup de consola con el venue al fondo.",                                                                              priority:false},
+  {id:"mk2", date:"2025-06-25",artist:"luar", city:"Barcelona",   venue:"Shoko",                   type:"foto",    time:"Después del show",     caption:"Barcelona 🔥\n@luar_lal en Shoko\n📍 BCN — Euro Tour 2026",                                                                                         hashtags:"#soundengineer #barcelona #shoko #luarlal #livemusic #tourproduction",                                                            tip:"Foto tuya en la consola con las luces del show de fondo.",                                                                             priority:false},
+  {id:"mk3", date:"2025-06-28",artist:"luar", city:"Marbella",    venue:"Fitz",                    type:"reel",    time:"Durante el show",      caption:"Marbella con @luar_lal 🌊🎛\nNoche perfecta en el sur\n📍 Fitz — Euro Tour 2026\n💬 Bookings → DM",                                                    hashtags:"#soundengineer #marbella #luarlal #tourlife #fohEngineer #liveSound #tourproduction",                                             tip:"Reel corto con el público. Marbella siempre da buenas imágenes.",                                                                      priority:false},
+  {id:"mk4", date:"2025-07-02",artist:"beele",city:"Ibiza",       venue:"Pacha Disco Club",        type:"reel",    time:"Durante el show",      caption:"Pacha Ibiza 🎛🏝\n@beele — la isla nos recibe 🔥\nEuro Tour 2026 🌍\n💬 Bookings → DM",                                                              hashtags:"#ibiza #pacha #soundengineer #beele #tourlife #fohEngineer #ibizalife #audioEngineer",                                            tip:"Pacha es reconocido mundialmente. Reel del show con el ambiente del club.",                                                            priority:false},
+  {id:"mk5", date:"2025-07-05",artist:"beele",city:"Lisboa",      venue:"Praia do Aterro",         type:"reel",    time:"Durante el show",      caption:"Lisboa 🇵🇹 con @beele\nPraia do Aterro — el Atlántico de fondo 🌊🎛\nEuro Tour 2026 🌍\n💬 Bookings → DM",                                           hashtags:"#lisboa #portugal #beele #soundengineer #tourlife #fohEngineer #europatour",                                                       tip:"Lisboa es hermosa visualmente. Reel del show con la ciudad de fondo.",                                                                 priority:false},
+  {id:"mk6", date:"2025-07-07",artist:"luar", city:"Mallorca",    venue:"Amok",                    type:"reel",    time:"Durante el show",      caption:"Mallorca 🏝 con @luar_lal\nIsla conquistada 🎛🔴\nEuro Tour 2026 🌍\n💬 Bookings → DM",                                                              hashtags:"#mallorca #soundengineer #luarlal #tourlife #island #liveSound #fohEngineer",                                                     tip:"Mallorca en verano es contenido premium.",                                                                                             priority:false},
+  {id:"mk7", date:"2025-07-09",artist:"beele",city:"Zúrich",      venue:"Reggaeton Nigh",          type:"foto",    time:"Durante el show",      caption:"Zürich 🇨🇭 @beele\nReggaetón llegando a Suiza 🎛\nEuro Tour 2026 🌍",                                                                               hashtags:"#zurich #suiza #beele #soundengineer #tourlife #reggaeton #europatour",                                                           tip:"Reggaeton en Suiza es diferenciador. Foto del show.",                                                                                  priority:false},
+  {id:"mk8", date:"2025-07-10",artist:"beele",city:"Madrid",      venue:"Movistar Arena",          type:"reel",    time:"Durante el show",      caption:"🏟 Movistar Arena, Madrid\n@beele x @farruko\nEsto es lo que hacemos 🎛🔴\nEuro Tour 2026 🌍\n💬 Bookings → DM",                                     hashtags:"#movistararena #madrid #beele #farruko #soundengineer #arena #fohEngineer #tourproduction #liveSound #audioEngineer",             tip:"EL POST MÁS IMPORTANTE DEL VERANO. Graba el plano desde FOH con el estadio lleno. Etiqueta a Beele y Farruko.",                        priority:true},
+  {id:"mk9", date:"2025-07-11",artist:"luar", city:"Melilla",     venue:"Plaza de Toros",          type:"reel",    time:"Durante el show",      caption:"Plaza de Toros, Melilla 🎛\n@luar_lal\nDonde nos llamen, llegamos 🌍\nEuro Tour 2026\n💬 Bookings → DM",                                            hashtags:"#melilla #soundengineer #luarlal #tourlife #plazadetoros #worldwide #fohEngineer",                                                tip:"Una Plaza de Toros es visualmente único.",                                                                                             priority:false},
+  {id:"mk10",date:"2025-07-15",artist:"beele",city:"Milán",       venue:"Milan Latin Fest",        type:"reel",    time:"Durante el show",      caption:"Milano 🇮🇹 @beele\nMilan Latin Fest — Europa nos abre las puertas 🎛🌍\nEuro Tour 2026\n💬 Bookings → DM",                                          hashtags:"#milan #italia #beele #soundengineer #tourlife #milanlatinfest #fohEngineer #europatour",                                         tip:"Milán tiene mucho peso de marca. Reel etiquetando el festival.",                                                                       priority:false},
+  {id:"mk11",date:"2025-07-23",artist:"beele",city:"Barcelona",   venue:"Estadio Olímpico",        type:"reel",    time:"Durante el show",      caption:"🏟 Estadio Olímpico de Barcelona\n@beele x @donomar\nBarcelona, una noche histórica 🎛🔴\nEuro Tour 2026 🌍\n💬 Bookings → DM",                      hashtags:"#estadioolimpico #barcelona #beele #donomar #soundengineer #stadium #fohEngineer #tourproduction #liveSound #audioEngineer",      tip:"SEGUNDO SHOW GRANDE. Estadio Olímpico con Beele y Don Omar. Plano desde FOH con el estadio lleno.",                                    priority:true},
+  {id:"mk12",date:"2025-07-25",artist:"beele",city:"Tenerife",    venue:"El Muelle",               type:"reel",    time:"Durante el show",      caption:"Tenerife 🌋 @beele x @yandel\nEl Muelle — Canarias on fire 🔥🎛\nEuro Tour 2026 🌍\n💬 Bookings → DM",                                             hashtags:"#tenerife #canarias #beele #yandel #soundengineer #tourlife #fohEngineer",                                                        tip:"Tenerife con Yandel — dos artistas en escena. Reel etiquetando a ambos.",                                                             priority:false},
+  {id:"mk13",date:"2025-07-26",artist:"beele",city:"Málaga",      venue:"Urban Paradise",          type:"reel",    time:"Post show",            caption:"Málaga cierra el verano con @beele x @omarcourtz\nUrban Paradise — Euro Tour 2026 wrapped 🎛✅\nDe Ibiza a Canarias — gracias 🙏🌍\n💬 Bookings → DM",hashtags:"#malaga #beele #omarcourtz #soundengineer #tourwrapped #tourproduction #worldwide #fohEngineer",                                   tip:"Post de cierre del tour de Beele. Reel resumen: Pacha, Movistar Arena, Estadio Olímpico.",                                             priority:true},
+  {id:"mk14",date:"2025-07-24",artist:"luar", city:"Benidorm",    venue:"Ku",                      type:"reel",    time:"Durante el show",      caption:"Ku Benidorm 🎛🏖\n@luar_lal en uno de los clubs más icónicos de Europa\nEuro Tour 2026 🌍\n💬 Bookings → DM",                                        hashtags:"#benidorm #kubenidorm #soundengineer #luarlal #tourlife #euroclub #fohEngineer",                                                  tip:"Ku es un club icónico en Europa. Reel del show.",                                                                                     priority:false},
+  {id:"mk15",date:"2025-07-31",artist:"luar", city:"Cambados",    venue:"Festival Albariño",       type:"reel",    time:"Post show",            caption:"Cambados, Galicia 🎛\nFestival Albariño con @luar_lal\nDe sur a norte — Euro Tour 2026 completo 🌍\n💬 Bookings → DM",                               hashtags:"#cambados #galicia #albarino #festival #luarlal #soundengineer #tourlife #fohEngineer",                                           tip:"Galicia después de toda España — buen momento para un mini resumen del tour.",                                                         priority:false},
+  {id:"mk16",date:"2025-08-01",artist:"luar", city:"Girona",      venue:"Festival Mediterránea",   type:"reel",    time:"Post show",            caption:"Fin del tour 🙌\nFestival Mediterránea, Girona\n@luar_lal — Euro Tour 2026 wrapped ✅\nGracias a todo el equipo 🎛🌍\n💬 Bookings → DM",             hashtags:"#girona #mediterranea #festival #luarlal #tourwrapped #soundengineer #tourproduction #worldwide",                                 tip:"Post de cierre del tour. Reel resumen con los mejores momentos.",                                                                      priority:true},
+  {id:"mk17",date:"2025-07-22",artist:"hades",city:"Torremolinos",venue:"Playa Aruba",             type:"reel",    time:"Durante el show",      caption:"Torremolinos ☀️ @hades66oficial\nPlaya Aruba — verano de playa 🌊🎛\nEuro Tour 2026\n💬 Bookings → DM",                                             hashtags:"#torremolinos #playaaruba #hades66 #soundengineer #tourlife #playa #verano #fohEngineer",                                         tip:"Beach club en Torremolinos. Reel del show con ambiente de playa.",                                                                     priority:false},
+  {id:"mk18",date:"2025-07-25",artist:"hades",city:"Puerto de Santa María",venue:"Puro Latino",   type:"reel",    time:"Post show",            caption:"Puerto de Santa María 🎛\n@hades66oficial — Puro Latino\nEuro Tour 2026 wrapped ✅\nGracias equipo 🙏🌍\n💬 Bookings → DM",                           hashtags:"#puertadesantamaria #purolatino #hades66 #soundengineer #tourwrapped #tourproduction #fohEngineer",                               tip:"Post de cierre del tour de Hades 66. Reel resumen.",                                                                                   priority:false},
+];
+
+const TYPE_CFG = {
+  reel:    {label:"Reel",    emoji:"🎬",color:"#E24B4A",bg:"#FCEBEB"},
+  foto:    {label:"Foto",    emoji:"📸",color:"#185FA5",bg:"#E6F1FB"},
+  historia:{label:"Historia",emoji:"📱",color:"#0F6E56",bg:"#E1F5EE"},
+};
+
+const fmtFull = d => new Date(d+"T12:00:00").toLocaleDateString("es-ES",{weekday:"short",day:"2-digit",month:"long"});
+const isToday = d => new Date(d+"T12:00:00").toDateString()===new Date().toDateString();
+const isPast  = d => new Date(d+"T12:00:00")<new Date()&&!isToday(d);
+const isSoon  = d => { const diff=new Date(d+"T12:00:00")-new Date(); return diff>0&&diff<3*86400000; };
+const groupMonth = arr => {
+  const g={};
+  arr.forEach(s=>{ const m=s.date.slice(0,7); if(!g[m])g[m]=[]; g[m].push(s); });
+  return g;
+};
+
+const Av = ({m,size=28}) => (
+  React.createElement('div',{style:{width:size,height:size,borderRadius:"50%",background:m.bg,color:m.color,display:"flex",alignItems:"center",justifyContent:"center",fontSize:size*.34,fontWeight:700,flexShrink:0}},m.initials)
+);
+
+const AssignModal = ({show,onClose,onSave}) => {
+  const a=ARTISTS[show.artist];
+  const [sel,setSel]=useState([...show.assigned]);
+  const [status,setStatus]=useState(show.status);
+  const [notes,setNotes]=useState(show.notes||"");
+  const toggle=id=>setSel(p=>p.includes(id)?p.filter(x=>x!==id):[...p,id]);
+  return (
+    <div onClick={onClose} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.6)",zIndex:200,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
+      <div onClick={e=>e.stopPropagation()} style={{background:"#fff",borderRadius:16,padding:22,width:"100%",maxWidth:400,boxShadow:"0 24px 64px rgba(0,0,0,.25)",maxHeight:"90vh",overflow:"auto"}}>
+        <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:6}}>
+          <span style={{background:a.bg,color:a.color,borderRadius:6,padding:"2px 9px",fontSize:11,fontWeight:700}}>{a.name}</span>
+        </div>
+        <div style={{fontSize:17,fontWeight:700,color:"#111",marginBottom:2}}>{show.venue}</div>
+        <div style={{fontSize:12,color:"#6b7280",marginBottom:16}}>{fmtFull(show.date)} · {show.city}</div>
+        <div style={{fontSize:10,fontWeight:700,color:"#9ca3af",textTransform:"uppercase",letterSpacing:1,marginBottom:10}}>Técnico asignado</div>
+        {TEAM.map(m=>{
+          const on=sel.includes(m.id);
+          return React.createElement('div',{key:m.id,onClick:()=>toggle(m.id),style:{display:"flex",alignItems:"center",gap:12,padding:"9px 12px",borderRadius:10,border:on?`2px solid ${m.color}`:"2px solid #e5e7eb",background:on?m.bg:"#fafafa",cursor:"pointer",marginBottom:8}},
+            React.createElement(Av,{m,size:30}),
+            React.createElement('span',{style:{fontSize:13,fontWeight:600,color:on?m.color:"#374151",flex:1}},m.name),
+            on&&React.createElement('span',{style:{color:m.color,fontSize:16}},"✓")
+          );
+        })}
+        <div style={{fontSize:10,fontWeight:700,color:"#9ca3af",textTransform:"uppercase",letterSpacing:1,margin:"14px 0 10px"}}>Estado</div>
+        <div style={{display:"flex",gap:8,marginBottom:14}}>
+          {[["confirmed","Confirmado","#16a34a"],["tbc","TBC","#d97706"],["done","Terminado","#6b7280"]].map(([v,l,c])=>
+            React.createElement('div',{key:v,onClick:()=>setStatus(v),style:{flex:1,textAlign:"center",padding:"7px 4px",borderRadius:8,cursor:"pointer",border:status===v?`2px solid ${c}`:"2px solid #e5e7eb",background:status===v?c+"15":"#fafafa",color:status===v?c:"#6b7280",fontWeight:600,fontSize:12}},l)
+          )}
+        </div>
+        <textarea value={notes} onChange={e=>setNotes(e.target.value)} placeholder="Notas, rider técnico, contacto..." style={{width:"100%",padding:"9px 12px",borderRadius:10,border:"2px solid #e5e7eb",fontSize:13,resize:"none",outline:"none",fontFamily:"inherit",minHeight:64,background:"#fafafa",marginBottom:14}}/>
+        <div style={{display:"flex",gap:8}}>
+          <button onClick={onClose} style={{flex:1,padding:"10px",borderRadius:10,border:"2px solid #e5e7eb",background:"#fff",color:"#374151",fontWeight:600,fontSize:13,cursor:"pointer"}}>Cancelar</button>
+          <button onClick={()=>onSave({...show,assigned:sel,status,notes})} style={{flex:2,padding:"10px",borderRadius:10,border:"none",background:"#111",color:"#fff",fontWeight:700,fontSize:13,cursor:"pointer"}}>Guardar</button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const MktgModal = ({event,onClose}) => {
+  const [copied,setCopied]=useState(null);
+  const copy=(text,id)=>{ navigator.clipboard.writeText(text); setCopied(id); setTimeout(()=>setCopied(null),2000); };
+  const t=TYPE_CFG[event.type]; const a=ARTISTS[event.artist];
+  return (
+    <div onClick={onClose} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.6)",zIndex:200,display:"flex",alignItems:"flex-end"}}>
+      <div onClick={e=>e.stopPropagation()} style={{background:"#fff",borderRadius:"20px 20px 0 0",padding:"20px 16px 40px",width:"100%",maxHeight:"85vh",overflow:"auto"}}>
+        <div style={{width:40,height:4,background:"#e5e7eb",borderRadius:2,margin:"0 auto 16px"}}/>
+        <div style={{display:"flex",gap:6,marginBottom:6,flexWrap:"wrap"}}>
+          <span style={{background:a.bg,color:a.color,borderRadius:6,padding:"2px 9px",fontSize:11,fontWeight:700}}>{a.name}</span>
+          <span style={{background:t.bg,color:t.color,borderRadius:6,padding:"2px 9px",fontSize:11,fontWeight:700}}>{t.emoji} {t.label}</span>
+          {event.priority&&<span style={{background:"#fef3c7",color:"#d97706",borderRadius:6,padding:"2px 9px",fontSize:11,fontWeight:700}}>⭐ Prioritario</span>}
+        </div>
+        <div style={{fontSize:17,fontWeight:700,color:"#111",marginBottom:2}}>{event.venue}</div>
+        <div style={{fontSize:12,color:"#6b7280",marginBottom:16}}>📅 {fmtFull(event.date)} · 📍 {event.city} · ⏰ {event.time}</div>
+        <div style={{background:"#f9fafb",borderRadius:12,padding:14,marginBottom:12}}>
+          <div style={{fontSize:10,fontWeight:700,color:"#9ca3af",textTransform:"uppercase",letterSpacing:1,marginBottom:8}}>💡 Tip</div>
+          <div style={{fontSize:13,color:"#374151",lineHeight:1.6}}>{event.tip}</div>
+        </div>
+        <div style={{background:"#f9fafb",borderRadius:12,padding:14,marginBottom:12}}>
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}>
+            <div style={{fontSize:10,fontWeight:700,color:"#9ca3af",textTransform:"uppercase",letterSpacing:1}}>✍️ Caption</div>
+            <button onClick={()=>copy(event.caption,"cap")} style={{padding:"4px 10px",background:copied==="cap"?"#16a34a":"#111",color:"#fff",border:"none",borderRadius:8,fontSize:11,fontWeight:600,cursor:"pointer"}}>{copied==="cap"?"✓ Copiado":"Copiar"}</button>
+          </div>
+          <div style={{fontSize:13,color:"#374151",lineHeight:1.6,whiteSpace:"pre-wrap"}}>{event.caption}</div>
+        </div>
+        <div style={{background:"#f9fafb",borderRadius:12,padding:14}}>
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}>
+            <div style={{fontSize:10,fontWeight:700,color:"#9ca3af",textTransform:"uppercase",letterSpacing:1}}># Hashtags</div>
+            <button onClick={()=>copy(event.hashtags,"hash")} style={{padding:"4px 10px",background:copied==="hash"?"#16a34a":"#111",color:"#fff",border:"none",borderRadius:8,fontSize:11,fontWeight:600,cursor:"pointer"}}>{copied==="hash"?"✓ Copiado":"Copiar"}</button>
+          </div>
+          <div style={{fontSize:12,color:"#6b7280",lineHeight:1.8}}>{event.hashtags}</div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+function App() {
+  const [shows,setShows]=useState(INITIAL_SHOWS);
+  const [editShow,setEditShow]=useState(null);
+  const [mktgSel,setMktgSel]=useState(null);
+  const [tab,setTab]=useState("shows");
+  const [filterArtist,setFA]=useState("all");
+  const [filterPerson,setFP]=useState("all");
+  const [mktgFilter,setMF]=useState("all");
+
+  const conflicts=useMemo(()=>{
+    const ids=new Set(); const byDate={};
+    shows.forEach(s=>{ if(!byDate[s.date])byDate[s.date]=[]; byDate[s.date].push(s); });
+    Object.values(byDate).forEach(day=>{ if(new Set(day.map(x=>x.artist)).size>=2) day.forEach(s=>ids.add(s.id)); });
+    return ids;
+  },[shows]);
+
+  const filteredShows=useMemo(()=>shows
+    .filter(s=>filterArtist==="all"||s.artist===filterArtist)
+    .filter(s=>filterPerson==="all"||s.assigned.includes(filterPerson))
+    .sort((a,b)=>a.date.localeCompare(b.date)),[shows,filterArtist,filterPerson]);
+
+  const grouped=useMemo(()=>groupMonth(filteredShows),[filteredShows]);
+  const todayMktg=MKTG.filter(e=>isToday(e.date));
+  const soonMktg=MKTG.filter(e=>isSoon(e.date));
+  const filtMktg=useMemo(()=>MKTG.filter(e=>mktgFilter==="all"||e.artist===mktgFilter).sort((a,b)=>a.date.localeCompare(b.date)),[mktgFilter]);
+  const priorityMktg=MKTG.filter(e=>e.priority);
+  const conflictDays=[...new Set(shows.filter(s=>conflicts.has(s.id)).map(s=>s.date))].length;
+
+  const TABS=[{id:"shows",label:"📋 Shows"},{id:"conflicts",label:"⚡ "+conflictDays},{id:"marketing",label:"📣 Mktg"},{id:"stats",label:"📊 Stats"}];
+
+  return React.createElement('div',{style:{display:"flex",flexDirection:"column",height:"100dvh",background:"#f8f9fa",fontFamily:"system-ui,-apple-system,sans-serif",maxWidth:600,margin:"0 auto"}},
+
+    // HEADER
+    React.createElement('div',{style:{background:"#111",padding:"13px 16px",display:"flex",alignItems:"center",gap:10}},
+      React.createElement('div',{style:{width:36,height:36,borderRadius:10,background:"#E24B4A",display:"flex",alignItems:"center",justifyContent:"center",fontSize:17}},"🎛"),
+      React.createElement('div',{style:{flex:1}},
+        React.createElement('div',{style:{fontSize:15,fontWeight:700,color:"#fff"}},"TourDesk Pro"),
+        React.createElement('div',{style:{fontSize:10,color:"#9ca3af"}},"Euro Tours 2026 · "+shows.length+" shows · 3 artistas")
+      ),
+      (todayMktg.length>0||soonMktg.length>0)&&React.createElement('div',{onClick:()=>setTab("marketing"),style:{background:"#E24B4A",borderRadius:20,padding:"4px 10px",fontSize:11,fontWeight:700,color:"#fff",cursor:"pointer"}},
+        todayMktg.length>0?todayMktg.length+" post HOY":soonMktg.length+" pronto"
+      )
+    ),
+
+    // TABS
+    React.createElement('div',{style:{background:"#fff",borderBottom:"1.5px solid #f3f4f6",display:"flex"}},
+      TABS.map(t=>React.createElement('button',{key:t.id,onClick:()=>setTab(t.id),style:{flex:1,padding:"11px 2px",border:"none",background:"transparent",fontSize:12,fontWeight:600,cursor:"pointer",color:tab===t.id?"#E24B4A":"#9ca3af",borderBottom:tab===t.id?"2.5px solid #E24B4A":"2.5px solid transparent"}},t.label))
+    ),
+
+    // SHOWS TAB
+    tab==="shows"&&React.createElement('div',{style:{flex:1,overflow:"auto",padding:"12px 12px 80px"}},
+      React.createElement('div',{style:{display:"flex",gap:6,flexWrap:"wrap",marginBottom:8}},
+        ["all",...Object.keys(ARTISTS)].map(k=>{
+          const a=k==="all"?{name:"Todos",color:"#111",bg:"#111"}:ARTISTS[k];
+          return React.createElement('button',{key:k,onClick:()=>setFA(filterArtist===k?"all":k),style:{padding:"5px 11px",borderRadius:20,border:filterArtist===k?`2px solid ${a.color}`:"2px solid #e5e7eb",background:filterArtist===k?(k==="all"?"#111":a.bg):"#fff",color:filterArtist===k?(k==="all"?"#fff":a.color):"#374151",fontWeight:600,fontSize:11,cursor:"pointer"}},k==="all"?"Todos":a.name);
+        })
+      ),
+      React.createElement('div',{style:{display:"flex",gap:6,marginBottom:12}},
+        ["all",...TEAM.map(m=>m.id)].map(k=>{
+          const m=TEAM.find(x=>x.id===k);
+          return React.createElement('button',{key:k,onClick:()=>setFP(filterPerson===k?"all":k),style:{padding:"4px 10px",borderRadius:20,border:filterPerson===k?`2px solid ${m?m.color:"#111"}`:"2px solid #e5e7eb",background:filterPerson===k?(m?m.bg:"#111"):"#fff",color:filterPerson===k?(m?m.color:"#fff"):"#374151",fontWeight:600,fontSize:11,cursor:"pointer"}},k==="all"?"Todos":m.initials);
+        })
+      ),
+      Object.keys(grouped).sort().map(month=>React.createElement('div',{key:month,style:{marginBottom:20}},
+        React.createElement('div',{style:{fontSize:10,fontWeight:700,color:"#9ca3af",textTransform:"uppercase",letterSpacing:1.5,marginBottom:10,display:"flex",alignItems:"center",gap:8}},
+          React.createElement('span',null,new Date(month+"-01T12:00:00").toLocaleDateString("es-ES",{month:"long",year:"numeric"})),
+          React.createElement('span',{style:{background:"#e5e7eb",color:"#374151",borderRadius:20,padding:"1px 8px",fontSize:10}},grouped[month].length)
+        ),
+        grouped[month].map(s=>{
+          const a=ARTISTS[s.artist]; const members=TEAM.filter(m=>s.assigned.includes(m.id)); const conflict=conflicts.has(s.id);
+          return React.createElement('div',{key:s.id,onClick:()=>setEditShow(s),style:{background:conflict?"#fff8f8":"#fff",borderRadius:12,padding:"11px 13px",marginBottom:7,cursor:"pointer",border:conflict?"2px solid #fca5a5":"1.5px solid #f3f4f6"}},
+            React.createElement('div',{style:{display:"flex",alignItems:"flex-start",gap:10}},
+              React.createElement('div',{style:{textAlign:"center",minWidth:32}},
+                React.createElement('div',{style:{fontSize:16,fontWeight:800,color:"#111",lineHeight:1}},new Date(s.date+"T12:00:00").getDate()),
+                React.createElement('div',{style:{fontSize:9,color:"#9ca3af",textTransform:"uppercase"}},new Date(s.date+"T12:00:00").toLocaleDateString("es-ES",{month:"short"}))
+              ),
+              React.createElement('div',{style:{flex:1,minWidth:0}},
+                React.createElement('div',{style:{display:"flex",alignItems:"center",gap:5,marginBottom:3}},
+                  React.createElement('span',{style:{background:a.bg,color:a.color,borderRadius:5,padding:"1px 7px",fontSize:10,fontWeight:700}},a.short),
+                  conflict&&React.createElement('span',{style:{fontSize:10,color:"#dc2626",fontWeight:700}},"⚡")
+                ),
+                React.createElement('div',{style:{fontSize:13,fontWeight:700,color:"#111",marginBottom:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},s.venue),
+                React.createElement('div',{style:{fontSize:11,color:"#6b7280"}},"📍 "+s.city)
+              ),
+              React.createElement('div',{style:{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:5}},
+                React.createElement('span',{style:{fontSize:10,fontWeight:600,color:s.status==="confirmed"?"#16a34a":s.status==="tbc"?"#d97706":"#6b7280"}},s.status==="confirmed"?"● Conf.":s.status==="tbc"?"● TBC":"● Listo"),
+                React.createElement('div',{style:{display:"flex"}},
+                  members.length===0
+                    ?React.createElement('span',{style:{fontSize:10,color:"#f59e0b",fontWeight:600}},"Sin asignar")
+                    :members.map((m,i)=>React.createElement('div',{key:m.id,style:{marginLeft:i>0?-7:0,border:"2px solid #fff",borderRadius:"50%"}},React.createElement(Av,{m,size:24})))
+                )
+              )
+            ),
+            s.notes&&React.createElement('div',{style:{marginTop:7,padding:"5px 9px",background:"#f9fafb",borderRadius:7,fontSize:11,color:"#6b7280"}},"📝 "+s.notes)
+          );
+        })
+      ))
+    ),
+
+    // CONFLICTS TAB
+    tab==="conflicts"&&React.createElement('div',{style:{flex:1,overflow:"auto",padding:"16px 12px 80px"}},
+      conflictDays===0
+        ?React.createElement('div',{style:{textAlign:"center",padding:60,color:"#16a34a"}},
+            React.createElement('div',{style:{fontSize:36,marginBottom:10}},"✅"),
+            React.createElement('div',{style:{fontSize:14,fontWeight:600}},"Sin conflictos")
+          )
+        :React.createElement('div',null,
+            React.createElement('div',{style:{background:"#fef2f2",border:"1.5px solid #fca5a5",borderRadius:12,padding:"11px 14px",marginBottom:16,fontSize:12,color:"#dc2626",fontWeight:500}},
+              "⚡ "+conflictDays+" días con shows simultáneos. Toca para reasignar."
+            ),
+            Object.entries(groupMonth(shows.filter(s=>conflicts.has(s.id)).sort((a,b)=>a.date.localeCompare(b.date)))).sort().map(([month,ss])=>
+              React.createElement('div',{key:month,style:{marginBottom:20}},
+                React.createElement('div',{style:{fontSize:10,fontWeight:700,color:"#dc2626",textTransform:"uppercase",letterSpacing:1,marginBottom:10}},new Date(month+"-01T12:00:00").toLocaleDateString("es-ES",{month:"long"})),
+                ss.map(s=>{
+                  const a=ARTISTS[s.artist]; const members=TEAM.filter(m=>s.assigned.includes(m.id));
+                  return React.createElement('div',{key:s.id,onClick:()=>setEditShow(s),style:{background:"#fff8f8",borderRadius:12,padding:"11px 13px",marginBottom:7,cursor:"pointer",border:"2px solid #fca5a5"}},
+                    React.createElement('div',{style:{display:"flex",alignItems:"center",gap:10}},
+                      React.createElement('div',{style:{textAlign:"center",minWidth:32}},
+                        React.createElement('div',{style:{fontSize:16,fontWeight:800,color:"#dc2626"}},new Date(s.date+"T12:00:00").getDate()),
+                        React.createElement('div',{style:{fontSize:9,color:"#9ca3af",textTransform:"uppercase"}},new Date(s.date+"T12:00:00").toLocaleDateString("es-ES",{month:"short"}))
+                      ),
+                      React.createElement('div',{style:{flex:1}},
+                        React.createElement('span',{style:{background:a.bg,color:a.color,borderRadius:5,padding:"1px 7px",fontSize:10,fontWeight:700,marginBottom:4,display:"inline-block"}},a.name),
+                        React.createElement('div',{style:{fontSize:13,fontWeight:700,color:"#111"}},s.venue),
+                        React.createElement('div',{style:{fontSize:11,color:"#6b7280"}},"📍 "+s.city)
+                      ),
+                      React.createElement('div',{style:{display:"flex"}},members.map((m,i)=>React.createElement('div',{key:m.id,style:{marginLeft:i>0?-7:0,border:"2px solid #fff",borderRadius:"50%"}},React.createElement(Av,{m,size:24}))))
+                    )
+                  );
+                })
+              )
+            )
+          )
+    ),
+
+    // MARKETING TAB
+    tab==="marketing"&&React.createElement('div',{style:{flex:1,overflow:"auto",padding:"12px 12px 80px"}},
+      todayMktg.length>0&&React.createElement('div',{style:{background:"#fef2f2",border:"2px solid #E24B4A",borderRadius:12,padding:"11px 14px",marginBottom:12}},
+        React.createElement('div',{style:{fontSize:11,fontWeight:700,color:"#E24B4A",marginBottom:6}},"🔴 PUBLICAR HOY"),
+        todayMktg.map(e=>React.createElement('div',{key:e.id,onClick:()=>setMktgSel(e),style:{fontSize:12,color:"#111",cursor:"pointer",padding:"4px 0",borderBottom:"0.5px solid #fca5a5"}},TYPE_CFG[e.type].emoji+" "+e.venue+" — "+e.city))
+      ),
+      priorityMktg.length>0&&React.createElement('div',{style:{marginBottom:16}},
+        React.createElement('div',{style:{fontSize:10,fontWeight:700,color:"#d97706",textTransform:"uppercase",letterSpacing:1,marginBottom:8}},"⭐ Shows prioritarios"),
+        priorityMktg.map(e=>{
+          const a=ARTISTS[e.artist];
+          return React.createElement('div',{key:e.id,onClick:()=>setMktgSel(e),style:{background:"#fffbeb",border:"1.5px solid #fcd34d",borderRadius:12,padding:"10px 13px",marginBottom:7,cursor:"pointer",display:"flex",alignItems:"center",gap:10}},
+            React.createElement('div',{style:{textAlign:"center",minWidth:32}},
+              React.createElement('div',{style:{fontSize:15,fontWeight:800,color:"#d97706"}},new Date(e.date+"T12:00:00").getDate()),
+              React.createElement('div',{style:{fontSize:9,color:"#9ca3af",textTransform:"uppercase"}},new Date(e.date+"T12:00:00").toLocaleDateString("es-ES",{month:"short"}))
+            ),
+            React.createElement('div',{style:{flex:1}},
+              React.createElement('span',{style:{background:a.bg,color:a.color,borderRadius:5,padding:"1px 7px",fontSize:10,fontWeight:700,marginBottom:3,display:"inline-block"}},a.name),
+              React.createElement('div',{style:{fontSize:13,fontWeight:700,color:"#111"}},e.venue),
+              React.createElement('div',{style:{fontSize:11,color:"#6b7280"}},"📍 "+e.city)
+            ),
+            React.createElement('span',{style:{fontSize:18}},TYPE_CFG[e.type].emoji)
+          );
+        })
+      ),
+      React.createElement('div',{style:{display:"flex",gap:6,flexWrap:"wrap",marginBottom:10}},
+        ["all",...Object.keys(ARTISTS)].map(k=>{
+          const a=k==="all"?{name:"Todos",color:"#111",bg:"#111"}:ARTISTS[k];
+          return React.createElement('button',{key:k,onClick:()=>setMF(mktgFilter===k?"all":k),style:{padding:"5px 11px",borderRadius:20,border:mktgFilter===k?`2px solid ${a.color}`:"2px solid #e5e7eb",background:mktgFilter===k?(k==="all"?"#111":a.bg):"#fff",color:mktgFilter===k?(k==="all"?"#fff":a.color):"#374151",fontWeight:600,fontSize:11,cursor:"pointer"}},k==="all"?"Todos":a.name);
+        })
+      ),
+      React.createElement('div',{style:{fontSize:10,fontWeight:700,color:"#9ca3af",textTransform:"uppercase",letterSpacing:1,marginBottom:8}},"Todos los posts"),
+      filtMktg.map(e=>{
+        const a=ARTISTS[e.artist]; const t=TYPE_CFG[e.type];
+        const today=isToday(e.date); const past=isPast(e.date); const soon=isSoon(e.date);
+        return React.createElement('div',{key:e.id,onClick:()=>setMktgSel(e),style:{background:today?"#fff8f8":"#fff",borderRadius:12,padding:"10px 13px",marginBottom:7,cursor:"pointer",border:today?"2px solid #E24B4A":soon?"2px solid #f59e0b":"1.5px solid #f3f4f6",opacity:past?.5:1}},
+          React.createElement('div',{style:{display:"flex",alignItems:"center",gap:10}},
+            React.createElement('div',{style:{textAlign:"center",minWidth:32}},
+              React.createElement('div',{style:{fontSize:15,fontWeight:800,color:today?"#E24B4A":"#111"}},new Date(e.date+"T12:00:00").getDate()),
+              React.createElement('div',{style:{fontSize:9,color:"#9ca3af",textTransform:"uppercase"}},new Date(e.date+"T12:00:00").toLocaleDateString("es-ES",{month:"short"}))
+            ),
+            React.createElement('div',{style:{flex:1,minWidth:0}},
+              React.createElement('div',{style:{display:"flex",gap:5,marginBottom:3,flexWrap:"wrap"}},
+                React.createElement('span',{style:{background:a.bg,color:a.color,borderRadius:5,padding:"1px 7px",fontSize:10,fontWeight:700}},a.name),
+                React.createElement('span',{style:{background:t.bg,color:t.color,borderRadius:5,padding:"1px 7px",fontSize:10,fontWeight:700}},t.emoji+" "+t.label),
+                today&&React.createElement('span',{style:{background:"#E24B4A",color:"#fff",borderRadius:5,padding:"1px 7px",fontSize:10,fontWeight:700}},"HOY"),
+                e.priority&&React.createElement('span',{style:{background:"#fef3c7",color:"#d97706",borderRadius:5,padding:"1px 7px",fontSize:10,fontWeight:700}},"⭐")
+              ),
+              React.createElement('div',{style:{fontSize:13,fontWeight:700,color:"#111",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},e.venue),
+              React.createElement('div',{style:{fontSize:11,color:"#6b7280"}},"📍 "+e.city+" · ⏰ "+e.time)
+            ),
+            React.createElement('span',{style:{fontSize:16,color:"#9ca3af"}},"›")
+          )
+        );
+      })
+    ),
+
+    // STATS TAB
+    tab==="stats"&&React.createElement('div',{style:{flex:1,overflow:"auto",padding:"16px 12px 80px"}},
+      React.createElement('div',{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:16}},
+        [["Shows totales",shows.length,"#111"],["Confirmados",shows.filter(s=>s.status==="confirmed").length,"#16a34a"],["TBC",shows.filter(s=>s.status==="tbc").length,"#d97706"],["Conflictos",conflictDays,"#E24B4A"]].map(([l,v,c])=>
+          React.createElement('div',{key:l,style:{background:"#fff",borderRadius:12,padding:"14px",border:"1.5px solid #f3f4f6"}},
+            React.createElement('div',{style:{fontSize:11,color:"#9ca3af",fontWeight:600,marginBottom:4}},l),
+            React.createElement('div',{style:{fontSize:26,fontWeight:800,color:c}},v)
+          )
+        )
+      ),
+      React.createElement('div',{style:{background:"#fff",borderRadius:12,padding:"14px 16px",border:"1.5px solid #f3f4f6",marginBottom:12}},
+        React.createElement('div',{style:{fontSize:11,fontWeight:700,color:"#9ca3af",textTransform:"uppercase",letterSpacing:1,marginBottom:14}},"Shows por artista"),
+        Object.entries(ARTISTS).map(([k,a])=>{
+          const count=shows.filter(s=>s.artist===k).length;
+          return React.createElement('div',{key:k,style:{marginBottom:12}},
+            React.createElement('div',{style:{display:"flex",justifyContent:"space-between",marginBottom:5}},
+              React.createElement('span',{style:{fontSize:13,fontWeight:600,color:a.color}},a.name),
+              React.createElement('span',{style:{fontSize:13,fontWeight:700,color:"#111"}},count)
+            ),
+            React.createElement('div',{style:{height:7,background:"#f3f4f6",borderRadius:4}},
+              React.createElement('div',{style:{height:7,background:a.color,borderRadius:4,width:`${(count/shows.length)*100}%`}})
+            )
+          );
+        })
+      ),
+      React.createElement('div',{style:{background:"#fff",borderRadius:12,padding:"14px 16px",border:"1.5px solid #f3f4f6"}},
+        React.createElement('div',{style:{fontSize:11,fontWeight:700,color:"#9ca3af",textTransform:"uppercase",letterSpacing:1,marginBottom:14}},"Carga por técnico"),
+        TEAM.map(m=>{
+          const count=shows.filter(s=>s.assigned.includes(m.id)).length;
+          return React.createElement('div',{key:m.id,style:{marginBottom:12}},
+            React.createElement('div',{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:5}},
+              React.createElement('div',{style:{display:"flex",alignItems:"center",gap:8}},React.createElement(Av,{m,size:26}),React.createElement('span',{style:{fontSize:13,fontWeight:600,color:"#374151"}},m.name)),
+              React.createElement('span',{style:{fontSize:13,fontWeight:700,color:m.color}},count+" shows")
+            ),
+            React.createElement('div',{style:{height:7,background:"#f3f4f6",borderRadius:4}},
+              React.createElement('div',{style:{height:7,background:m.color,borderRadius:4,width:`${(count/shows.length)*100}%`}})
+            )
+          );
+        })
+      )
+    ),
+
+    // MODALS
+    editShow&&React.createElement(AssignModal,{show:editShow,onClose:()=>setEditShow(null),onSave:s=>{setShows(p=>p.map(x=>x.id===s.id?s:x));setEditShow(null);}}),
+    mktgSel&&React.createElement(MktgModal,{event:mktgSel,onClose:()=>setMktgSel(null)})
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(App));
+</script>
+</body>
+</html>
