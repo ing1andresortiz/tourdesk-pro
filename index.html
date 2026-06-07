@@ -529,15 +529,16 @@ function LoginScreen({onLogin}){
     const next=pin+d;
     setPin(next);
     setError(false);
-    if(next.length>=4){
-      setTimeout(()=>{
-        if(USERS[next]){onLogin(USERS[next],next);}
-        else if(next.length===5){
-          if(USERS[next]){onLogin(USERS[next],next);}
-          else{setError(true);setShake(true);setTimeout(()=>{setPin("");setShake(false);},600);}
-        }
-      },100);
-    }
+    // Check after each digit from 4 onwards
+    setTimeout(()=>{
+      if(USERS[next]){
+        setPin("");
+        onLogin(USERS[next]);
+      } else if(next.length>=5){
+        setError(true);setShake(true);
+        setTimeout(()=>{setPin("");setShake(false);setError(false);},700);
+      }
+    },150);
   };
   const del=()=>{setPin(p=>p.slice(0,-1));setError(false);};
 
@@ -567,17 +568,14 @@ function LoginScreen({onLogin}){
 
 // ── MAIN APP ──────────────────────────────────────────────────
 function App(){
-  const [user,setUser]=React.useState(()=>{
-    const saved=localStorage.getItem("td_user");
-    return saved?JSON.parse(saved):null;
-  });
+  const [user,setUser]=React.useState(null);
   const [dark,setDark]=React.useState(()=>localStorage.getItem("td_dark")==="1");
   React.useEffect(()=>{document.body.style.background=dark?"#0d0d0d":"#f8f9fa";localStorage.setItem("td_dark",dark?"1":"0");},[dark]);
   const [shows,setShows]=React.useState(ALL_SHOWS);
   const [tab,setTab]=React.useState("shows");
 
-  const login=(u)=>{localStorage.setItem("td_user",JSON.stringify(u));setUser(u);};
-  const logout=()=>{localStorage.removeItem("td_user");setUser(null);};
+  const login=(u)=>{setUser(u);setTab("shows");};
+  const logout=()=>{setUser(null);};
 
   // Worker view — solo sus shows
   if(user&&user.role==="worker"){
