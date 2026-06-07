@@ -443,11 +443,153 @@ function ConflictsPanel({shows,conflicts,setShows}){
 }
 
 // ── MAIN APP ──────────────────────────────────────────────────
+// ── USERS & PINS ─────────────────────────────────────────────
+const USERS={
+  "2512":{name:"Andrés Ortiz",role:"admin",   memberId:"yo",  initials:"YO",color:"#E24B4A",bg:"#FCEBEB"},
+  "1234":{name:"Andrés Hernández",role:"worker",memberId:"w1",initials:"AH",color:"#185FA5",bg:"#E6F1FB"},
+  "12345":{name:"Miguel García",  role:"worker",memberId:"w2",initials:"MG",color:"#7C3AED",bg:"#EDE9FE"},
+};
+
+// ── WORKER VIEW ───────────────────────────────────────────────
+function WorkerView({user,shows,onLogout}){
+  const myShows=shows.filter(s=>s.assigned.includes(user.memberId)).sort((a,b)=>a.date.localeCompare(b.date));
+  const grouped=groupM(myShows);
+  const todayShows=myShows.filter(s=>isToday(s.date));
+  const upcoming=myShows.filter(s=>!isPast(s.date));
+  return React.createElement("div",{style:{display:"flex",flexDirection:"column",height:"100dvh",background:"#f8f9fa"}},
+    // Header
+    React.createElement("div",{style:{background:"#111",padding:"13px 16px",display:"flex",alignItems:"center",gap:10,paddingTop:"max(13px,env(safe-area-inset-top))"}},
+      React.createElement("div",{style:{width:34,height:34,borderRadius:"50%",background:user.bg,color:user.color,display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,fontWeight:700}},user.initials),
+      React.createElement("div",{style:{flex:1}},
+        React.createElement("div",{style:{fontSize:14,fontWeight:700,color:"#fff"}},user.name),
+        React.createElement("div",{style:{fontSize:10,color:"#9ca3af"}},upcoming.length+" shows pendientes")
+      ),
+      React.createElement("button",{onClick:onLogout,style:{background:"#2a2a2a",border:"none",borderRadius:8,color:"#9ca3af",fontSize:12,padding:"6px 10px",cursor:"pointer"}},"Salir")
+    ),
+    // Today alert
+    todayShows.length>0&&React.createElement("div",{style:{background:"#fef2f2",border:"2px solid #E24B4A",margin:"12px 14px 0",borderRadius:12,padding:"10px 14px"}},
+      React.createElement("div",{style:{fontSize:11,fontWeight:700,color:"#E24B4A",marginBottom:6}},"🔴 HOY TIENES SHOW"),
+      todayShows.map(s=>{
+        const a=ARTISTS[s.artist];
+        return React.createElement("div",{key:s.id,style:{fontSize:13,fontWeight:700,color:"#111",marginBottom:3}},
+          React.createElement("span",{style:{background:a.bg,color:a.color,borderRadius:5,padding:"1px 6px",fontSize:10,fontWeight:700,marginRight:6}},a.name),
+          s.venue+" · "+s.city,
+          s.notes&&React.createElement("div",{style:{fontSize:11,color:"#6b7280",fontWeight:400,marginTop:2}},"📝 "+s.notes)
+        );
+      })
+    ),
+    // Shows list
+    React.createElement("div",{style:{flex:1,overflow:"auto",padding:"12px 14px 40px"}},
+      Object.keys(grouped).sort().map(month=>
+        React.createElement("div",{key:month,style:{marginBottom:18}},
+          React.createElement("div",{style:{fontSize:10,fontWeight:700,color:"#9ca3af",textTransform:"uppercase",letterSpacing:1.5,marginBottom:9,display:"flex",alignItems:"center",gap:7}},
+            React.createElement("span",null,monthName(month)),
+            React.createElement("span",{style:{background:"#e5e7eb",color:"#6b7280",borderRadius:20,padding:"1px 7px",fontSize:10}},grouped[month].length)
+          ),
+          grouped[month].map(s=>{
+            const a=ARTISTS[s.artist];const today=isToday(s.date);const past=isPast(s.date);
+            return React.createElement("div",{key:s.id,style:{background:today?"#fff8f8":"#fff",borderRadius:12,padding:"12px 14px",marginBottom:8,border:today?"2px solid #E24B4A":"1.5px solid #f3f4f6",opacity:past?.6:1}},
+              React.createElement("div",{style:{display:"flex",alignItems:"flex-start",gap:10}},
+                React.createElement("div",{style:{textAlign:"center",minWidth:34}},
+                  React.createElement("div",{style:{fontSize:17,fontWeight:800,color:today?"#E24B4A":"#111",lineHeight:1}},new Date(s.date+"T12:00:00").getDate()),
+                  React.createElement("div",{style:{fontSize:9,color:"#9ca3af",textTransform:"uppercase"}},new Date(s.date+"T12:00:00").toLocaleDateString("es-ES",{month:"short"})),
+                  React.createElement("div",{style:{fontSize:9,color:"#9ca3af"}},new Date(s.date+"T12:00:00").toLocaleDateString("es-ES",{weekday:"short"}))
+                ),
+                React.createElement("div",{style:{flex:1}},
+                  React.createElement("div",{style:{display:"flex",alignItems:"center",gap:5,marginBottom:4}},
+                    React.createElement("span",{style:{background:a.bg,color:a.color,borderRadius:5,padding:"1px 7px",fontSize:10,fontWeight:700}},a.name),
+                    today&&React.createElement("span",{style:{background:"#E24B4A",color:"#fff",borderRadius:5,padding:"1px 6px",fontSize:10,fontWeight:700}},"HOY")
+                  ),
+                  React.createElement("div",{style:{fontSize:14,fontWeight:700,color:"#111",marginBottom:3}},s.venue),
+                  React.createElement("div",{style:{fontSize:12,color:"#6b7280",display:"flex",alignItems:"center",gap:4}},"📍 "+s.city),
+                  s.notes&&React.createElement("div",{style:{marginTop:7,padding:"6px 9px",background:"#f9fafb",borderRadius:8,fontSize:11,color:"#6b7280"}},"📝 "+s.notes)
+                ),
+                React.createElement("div",null,React.createElement(StatusDot,{s:s.status}))
+              )
+            );
+          })
+        )
+      ),
+      myShows.length===0&&React.createElement("div",{style:{textAlign:"center",padding:60,color:"#9ca3af"}},
+        React.createElement("div",{style:{fontSize:36,marginBottom:10}},"📋"),
+        React.createElement("div",{style:{fontSize:14,fontWeight:600}},"No tienes shows asignados")
+      )
+    )
+  );
+}
+
+// ── LOGIN SCREEN ──────────────────────────────────────────────
+function LoginScreen({onLogin}){
+  const [pin,setPin]=React.useState("");
+  const [error,setError]=React.useState(false);
+  const [shake,setShake]=React.useState(false);
+
+  const press=d=>{
+    if(pin.length>=5)return;
+    const next=pin+d;
+    setPin(next);
+    setError(false);
+    if(next.length>=4){
+      setTimeout(()=>{
+        if(USERS[next]){onLogin(USERS[next],next);}
+        else if(next.length===5){
+          if(USERS[next]){onLogin(USERS[next],next);}
+          else{setError(true);setShake(true);setTimeout(()=>{setPin("");setShake(false);},600);}
+        }
+      },100);
+    }
+  };
+  const del=()=>{setPin(p=>p.slice(0,-1));setError(false);};
+
+  const dots=Array.from({length:5},(_,i)=>
+    React.createElement("div",{key:i,style:{width:14,height:14,borderRadius:"50%",background:i<pin.length?(error?"#ef4444":"#E24B4A"):"#e5e7eb",transition:"background .15s"}})
+  );
+
+  const btn=(d,label)=>React.createElement("button",{onClick:()=>typeof d==="number"?press(String(d)):del(),style:{width:72,height:72,borderRadius:"50%",border:"1.5px solid #e5e7eb",background:"#fff",fontSize:d==="⌫"?22:22,fontWeight:600,color:"#111",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:2,boxShadow:"0 2px 8px rgba(0,0,0,.06)"}},
+    d==="⌫"?React.createElement("span",null,"⌫"):React.createElement(React.Fragment,null,React.createElement("span",null,d),label&&React.createElement("span",{style:{fontSize:8,color:"#9ca3af",letterSpacing:1}},label))
+  );
+
+  return React.createElement("div",{style:{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",height:"100dvh",background:"#f8f9fa",padding:24}},
+    React.createElement("div",{style:{width:64,height:64,borderRadius:16,background:"#E24B4A",display:"flex",alignItems:"center",justifyContent:"center",fontSize:28,marginBottom:20,boxShadow:"0 8px 24px rgba(226,75,74,.3)"}},"🎛"),
+    React.createElement("div",{style:{fontSize:22,fontWeight:700,color:"#111",marginBottom:4}},"TourDesk Pro"),
+    React.createElement("div",{style:{fontSize:13,color:"#6b7280",marginBottom:36}},"Introduce tu PIN"),
+    React.createElement("div",{style:{display:"flex",gap:14,marginBottom:36,animation:shake?"shake .4s":"none"}},dots),
+    error&&React.createElement("div",{style:{fontSize:12,color:"#ef4444",marginBottom:16,fontWeight:600}},"PIN incorrecto"),
+    React.createElement("div",{style:{display:"grid",gridTemplateColumns:"repeat(3,72px)",gap:14}},
+      btn(1,""),btn(2,"ABC"),btn(3,"DEF"),
+      btn(4,"GHI"),btn(5,"JKL"),btn(6,"MNO"),
+      btn(7,"PQRS"),btn(8,"TUV"),btn(9,"WXYZ"),
+      React.createElement("div"),btn(0,""),btn("⌫")
+    ),
+    React.createElement("style",null,`@keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-8px)}75%{transform:translateX(8px)}}`)
+  );
+}
+
+// ── MAIN APP ──────────────────────────────────────────────────
 function App(){
+  const [user,setUser]=React.useState(()=>{
+    const saved=localStorage.getItem("td_user");
+    return saved?JSON.parse(saved):null;
+  });
   const [dark,setDark]=React.useState(()=>localStorage.getItem("td_dark")==="1");
   React.useEffect(()=>{document.body.style.background=dark?"#0d0d0d":"#f8f9fa";localStorage.setItem("td_dark",dark?"1":"0");},[dark]);
   const [shows,setShows]=React.useState(ALL_SHOWS);
   const [tab,setTab]=React.useState("shows");
+
+  const login=(u)=>{localStorage.setItem("td_user",JSON.stringify(u));setUser(u);};
+  const logout=()=>{localStorage.removeItem("td_user");setUser(null);};
+
+  // Worker view — solo sus shows
+  if(user&&user.role==="worker"){
+    return React.createElement(WorkerView,{user,shows,onLogout:logout});
+  }
+
+  // Login screen
+  if(!user){
+    return React.createElement(LoginScreen,{onLogin:login});
+  }
+
+  // Admin view — todo
   const todayMktg=MKTG.filter(e=>isToday(e.date));
   const conflicts=React.useMemo(()=>{
     const ids=new Set();const byDate={};
@@ -458,11 +600,13 @@ function App(){
   const confDays=[...new Set(shows.filter(s=>conflicts.has(s.id)).map(s=>s.date))].length;
   const TABS=[{id:"shows",l:"📋"},{id:"conflicts",l:"⚡"+confDays},{id:"marketing",l:"📣"},{id:"office",l:"🏢"},{id:"stats",l:"📊"}];
   const hdr="#111"; const tbar=dark?"#111":"#fff"; const tbdr=dark?"#2a2a2a":"#f3f4f6";
+
   return React.createElement("div",{style:{display:"flex",flexDirection:"column",height:"100dvh",width:"100%",background:dark?"#0d0d0d":"#f8f9fa"}},
     React.createElement("div",{style:{background:hdr,padding:"12px 15px",display:"flex",alignItems:"center",gap:10,paddingTop:"max(12px,env(safe-area-inset-top))"}},
       React.createElement("div",{style:{width:33,height:33,borderRadius:9,background:"#E24B4A",display:"flex",alignItems:"center",justifyContent:"center",fontSize:15}},"🎛"),
       React.createElement("div",{style:{flex:1}},React.createElement("div",{style:{fontSize:14,fontWeight:700,color:"#fff"}},"TourDesk Pro"),React.createElement("div",{style:{fontSize:10,color:"#9ca3af"}},shows.length+" shows · Luar La L · Beele · Hades 66")),
       React.createElement("button",{onClick:()=>setDark(d=>!d),style:{background:"none",border:"none",cursor:"pointer",fontSize:16,padding:"3px 6px"}},dark?"☀️":"🌙"),
+      React.createElement("button",{onClick:logout,style:{background:"#2a2a2a",border:"none",borderRadius:8,color:"#9ca3af",fontSize:11,padding:"5px 8px",cursor:"pointer"}},"Salir"),
       todayMktg.length>0&&React.createElement("div",{onClick:()=>setTab("marketing"),style:{background:"#E24B4A",borderRadius:20,padding:"3px 9px",fontSize:10,fontWeight:700,color:"#fff",cursor:"pointer"}},todayMktg.length+" HOY")
     ),
     React.createElement("div",{style:{background:tbar,borderBottom:"1.5px solid "+tbdr,display:"flex",flexShrink:0}},
