@@ -156,14 +156,35 @@ function AssignModal({show,onClose,onSave}){
   const [sel,setSel]=React.useState([...show.assigned]);
   const [status,setStatus]=React.useState(show.status);
   const [notes,setNotes]=React.useState(show.notes||"");
+  const [llegada,setLlegada]=React.useState(show.llegada||"");
+  const [soundcheck,setSoundcheck]=React.useState(show.soundcheck||"");
+  const [showtime,setShowtime]=React.useState(show.showtime||"");
+  const [contacto,setContacto]=React.useState(show.contacto||"");
+  const [files,setFiles]=React.useState(show.files||[]);
   const a=ARTISTS[show.artist];
   const toggle=id=>setSel(p=>p.includes(id)?p.filter(x=>x!==id):[...p,id]);
-  return React.createElement("div",{onClick:onClose,style:{position:"fixed",inset:0,background:"rgba(0,0,0,.65)",zIndex:200,display:"flex",alignItems:"center",justifyContent:"center",padding:16}},
-    React.createElement("div",{onClick:e=>e.stopPropagation(),style:{background:"#fff",borderRadius:16,padding:20,width:"100%",maxWidth:400,maxHeight:"88vh",overflow:"auto"}},
+
+  const handleFile=e=>{
+    const f=e.target.files[0]; if(!f)return;
+    const reader=new FileReader();
+    reader.onload=ev=>{
+      setFiles(prev=>[...prev,{name:f.name,size:f.size,type:f.type,data:ev.target.result,uploaded:new Date().toLocaleDateString("es-ES")}]);
+    };
+    reader.readAsDataURL(f);
+  };
+  const removeFile=i=>setFiles(prev=>prev.filter((_,idx)=>idx!==i));
+
+  const label=(txt)=>React.createElement("div",{style:{fontSize:10,fontWeight:700,color:"#9ca3af",textTransform:"uppercase",letterSpacing:1,margin:"12px 0 7px"}},txt);
+  const timeInput=(val,set,ph)=>React.createElement("input",{type:"time",value:val,onChange:e=>set(e.target.value),style:{width:"100%",padding:"8px 11px",borderRadius:9,border:"2px solid #e5e7eb",fontSize:14,outline:"none",background:"#fafafa",color:"#111",marginBottom:4}});
+
+  return React.createElement("div",{onClick:onClose,style:{position:"fixed",inset:0,background:"rgba(0,0,0,.65)",zIndex:200,display:"flex",alignItems:"flex-end"}},
+    React.createElement("div",{onClick:e=>e.stopPropagation(),style:{background:"#fff",borderRadius:"20px 20px 0 0",padding:"18px 16px 44px",width:"100%",maxHeight:"92vh",overflow:"auto"}},
+      React.createElement("div",{style:{width:38,height:4,background:"#e5e7eb",borderRadius:2,margin:"0 auto 14px"}}),
       React.createElement("div",{style:{fontSize:11,background:a.bg,color:a.color,borderRadius:6,padding:"2px 9px",display:"inline-block",fontWeight:700,marginBottom:8}},a.name),
       React.createElement("div",{style:{fontSize:16,fontWeight:700,marginBottom:2}},show.venue),
       React.createElement("div",{style:{fontSize:12,color:"#6b7280",marginBottom:14}},fmtFull(show.date)+" · "+show.city),
-      React.createElement("div",{style:{fontSize:10,fontWeight:700,color:"#9ca3af",textTransform:"uppercase",letterSpacing:1,marginBottom:8}},"Técnico"),
+
+      label("Técnico asignado"),
       TEAM.map(m=>{
         const on=sel.includes(m.id);
         return React.createElement("div",{key:m.id,onClick:()=>toggle(m.id),style:{display:"flex",alignItems:"center",gap:10,padding:"8px 12px",borderRadius:10,border:on?"2px solid "+m.color:"2px solid #e5e7eb",background:on?m.bg:"#fafafa",cursor:"pointer",marginBottom:7}},
@@ -172,16 +193,46 @@ function AssignModal({show,onClose,onSave}){
           on&&React.createElement("span",{style:{color:m.color}},"✓")
         );
       }),
-      React.createElement("div",{style:{fontSize:10,fontWeight:700,color:"#9ca3af",textTransform:"uppercase",letterSpacing:1,margin:"12px 0 8px"}},"Estado"),
-      React.createElement("div",{style:{display:"flex",gap:7,marginBottom:12}},
+
+      label("Estado"),
+      React.createElement("div",{style:{display:"flex",gap:7,marginBottom:4}},
         [["confirmed","Confirmado","#16a34a"],["tbc","TBC","#d97706"],["done","Terminado","#6b7280"]].map(([v,l,c])=>
           React.createElement("div",{key:v,onClick:()=>setStatus(v),style:{flex:1,textAlign:"center",padding:"6px",borderRadius:8,cursor:"pointer",border:status===v?"2px solid "+c:"2px solid #e5e7eb",background:status===v?c+"22":"#fafafa",color:status===v?c:"#6b7280",fontWeight:600,fontSize:11}},l)
         )
       ),
-      React.createElement("textarea",{value:notes,onChange:e=>setNotes(e.target.value),placeholder:"Notas del show...",style:{width:"100%",padding:"8px 11px",borderRadius:9,border:"2px solid #e5e7eb",fontSize:13,resize:"none",outline:"none",fontFamily:"inherit",minHeight:56,background:"#fafafa",marginBottom:12}}),
+
+      label("Horarios del show"),
+      React.createElement("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:4}},
+        React.createElement("div",null,React.createElement("div",{style:{fontSize:10,color:"#9ca3af",marginBottom:3}},"Llegada"),timeInput(llegada,setLlegada)),
+        React.createElement("div",null,React.createElement("div",{style:{fontSize:10,color:"#9ca3af",marginBottom:3}},"Soundcheck"),timeInput(soundcheck,setSoundcheck)),
+        React.createElement("div",null,React.createElement("div",{style:{fontSize:10,color:"#9ca3af",marginBottom:3}},"Show"),timeInput(showtime,setShowtime))
+      ),
+
+      label("Contacto del venue"),
+      React.createElement("input",{value:contacto,onChange:e=>setContacto(e.target.value),placeholder:"Nombre · Tel · Email del responsable",style:{width:"100%",padding:"8px 11px",borderRadius:9,border:"2px solid #e5e7eb",fontSize:13,outline:"none",background:"#fafafa",color:"#111",marginBottom:4}}),
+
+      label("Notas para el técnico"),
+      React.createElement("textarea",{value:notes,onChange:e=>setNotes(e.target.value),placeholder:"Instrucciones, detalles del rider, accesos, parking...",style:{width:"100%",padding:"8px 11px",borderRadius:9,border:"2px solid #e5e7eb",fontSize:13,resize:"none",outline:"none",fontFamily:"inherit",minHeight:72,background:"#fafafa",marginBottom:4}}),
+
+      label("Archivos — contra-riders, planos, documentos"),
+      files.map((f,i)=>React.createElement("div",{key:i,style:{display:"flex",alignItems:"center",gap:8,padding:"8px 11px",background:"#f9fafb",borderRadius:9,marginBottom:6,border:"1.5px solid #e5e7eb"}},
+        React.createElement("span",{style:{fontSize:16}},f.type&&f.type.includes("pdf")?"📄":"📎"),
+        React.createElement("div",{style:{flex:1,minWidth:0}},
+          React.createElement("div",{style:{fontSize:12,fontWeight:600,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},f.name),
+          React.createElement("div",{style:{fontSize:10,color:"#9ca3af"}},f.uploaded)
+        ),
+        React.createElement("a",{href:f.data,download:f.name,style:{fontSize:11,color:"#185FA5",fontWeight:600,textDecoration:"none",padding:"3px 8px",background:"#E6F1FB",borderRadius:6}},"↓"),
+        React.createElement("button",{onClick:()=>removeFile(i),style:{background:"none",border:"none",color:"#9ca3af",cursor:"pointer",fontSize:16}},"×")
+      )),
+      React.createElement("label",{style:{display:"flex",alignItems:"center",gap:8,padding:"8px 11px",background:"#f9fafb",border:"2px dashed #e5e7eb",borderRadius:9,cursor:"pointer",marginBottom:12}},
+        React.createElement("span",{style:{fontSize:16}},"📎"),
+        React.createElement("span",{style:{fontSize:12,color:"#6b7280"}},"Subir archivo (PDF, imagen, documento)"),
+        React.createElement("input",{type:"file",accept:"*/*",onChange:handleFile,style:{display:"none"}})
+      ),
+
       React.createElement("div",{style:{display:"flex",gap:8}},
         React.createElement("button",{onClick:onClose,style:{flex:1,padding:"10px",borderRadius:10,border:"2px solid #e5e7eb",background:"#fff",fontWeight:600,fontSize:13,cursor:"pointer"}},"Cancelar"),
-        React.createElement("button",{onClick:()=>onSave({...show,assigned:sel,status,notes}),style:{flex:2,padding:"10px",borderRadius:10,border:"none",background:"#E24B4A",color:"#fff",fontWeight:700,fontSize:13,cursor:"pointer"}},"Guardar")
+        React.createElement("button",{onClick:()=>onSave({...show,assigned:sel,status,notes,llegada,soundcheck,showtime,contacto,files}),style:{flex:2,padding:"10px",borderRadius:10,border:"none",background:"#E24B4A",color:"#fff",fontWeight:700,fontSize:13,cursor:"pointer"}},"Guardar")
       )
     )
   );
@@ -501,8 +552,22 @@ function WorkerView({user, shows, onLogout}){
                     today&&React.createElement("span",{style:{background:"#E24B4A",color:"#fff",borderRadius:5,padding:"1px 6px",fontSize:10,fontWeight:700}},"HOY")
                   ),
                   React.createElement("div",{style:{fontSize:14,fontWeight:700,marginBottom:3}},s.venue),
-                  React.createElement("div",{style:{fontSize:12,color:"#6b7280"}},"📍 "+s.city),
-                  s.notes&&React.createElement("div",{style:{marginTop:7,padding:"6px 9px",background:"#f9fafb",borderRadius:8,fontSize:11,color:"#6b7280"}},"📝 "+s.notes)
+                  React.createElement("div",{style:{fontSize:12,color:"#6b7280",marginBottom:6}},"📍 "+s.city),
+                  (s.llegada||s.soundcheck||s.showtime)&&React.createElement("div",{style:{display:"flex",gap:8,flexWrap:"wrap",marginBottom:6}},
+                    s.llegada&&React.createElement("div",{style:{background:"#E6F1FB",color:"#185FA5",borderRadius:7,padding:"3px 8px",fontSize:11,fontWeight:600}},"🚗 Llegada "+s.llegada),
+                    s.soundcheck&&React.createElement("div",{style:{background:"#FAEEDA",color:"#854F0B",borderRadius:7,padding:"3px 8px",fontSize:11,fontWeight:600}},"🎛 SC "+s.soundcheck),
+                    s.showtime&&React.createElement("div",{style:{background:"#FCEBEB",color:"#A32D2D",borderRadius:7,padding:"3px 8px",fontSize:11,fontWeight:600}},"🔴 Show "+s.showtime)
+                  ),
+                  s.contacto&&React.createElement("div",{style:{fontSize:11,color:"#6b7280",marginBottom:4}},"📞 "+s.contacto),
+                  s.notes&&React.createElement("div",{style:{marginTop:4,padding:"6px 9px",background:"#f9fafb",borderRadius:8,fontSize:11,color:"#374151",lineHeight:1.5}},"📝 "+s.notes),
+                  s.files&&s.files.length>0&&React.createElement("div",{style:{marginTop:6}},
+                    React.createElement("div",{style:{fontSize:10,fontWeight:700,color:"#9ca3af",textTransform:"uppercase",letterSpacing:1,marginBottom:5}},"Archivos"),
+                    s.files.map((f,i)=>React.createElement("a",{key:i,href:f.data,download:f.name,style:{display:"flex",alignItems:"center",gap:7,padding:"6px 9px",background:"#E6F1FB",borderRadius:8,marginBottom:4,textDecoration:"none"}},
+                      React.createElement("span",{style:{fontSize:14}},f.type&&f.type.includes("pdf")?"📄":"📎"),
+                      React.createElement("span",{style:{fontSize:11,fontWeight:600,color:"#185FA5",flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},f.name),
+                      React.createElement("span",{style:{fontSize:10,color:"#185FA5",fontWeight:700}},"↓ Descargar")
+                    ))
+                  )
                 ),
                 React.createElement(StatusDot,{s:s.status})
               )
