@@ -9,15 +9,16 @@
   <title>TourDesk Pro</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500\&display=swap" rel="stylesheet"/>
   <style>
     *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
     html,body{width:100%;height:100%;overflow:hidden}
-    body{font-family:system-ui,-apple-system,sans-serif;background:#f8f9fa}
+    body{font-family:"DM Sans",system-ui,-apple-system,sans-serif;background:#f8f9fa}
     #root{height:100dvh;display:flex;flex-direction:column}
     ::-webkit-scrollbar{width:0}
     @keyframes bounce{0%,80%,100%{transform:translateY(0);opacity:.4}40%{transform:translateY(-5px);opacity:1}}
     @keyframes spin{to{transform:rotate(360deg)}}
-    .spinner{width:32px;height:32px;border:3px solid #f3f4f6;border-top-color:#E24B4A;border-radius:50%;animation:spin .7s linear infinite;margin:0 auto}
+    .spinner{width:32px;height:32px;border:3px solid #f3f4f6;border-top-color:#E03A38;border-radius:50%;animation:spin .7s linear infinite;margin:0 auto}
   </style>
 </head>
 <body>
@@ -25,12 +26,12 @@
 <script>
 // ── DATA ──────────────────────────────────────────────────────
 const TEAM=[
-  {id:"yo",name:"Yo (FOH)",        initials:"YO",color:"#E24B4A",bg:"#FCEBEB"},
+  {id:"yo",name:"Yo (FOH)",        initials:"YO",color:"#E03A38",bg:"#1a0a0a"},
   {id:"w1",name:"Andrés Hernández",initials:"AH",color:"#185FA5",bg:"#E6F1FB"},
   {id:"w2",name:"Miguel García",   initials:"MG",color:"#7C3AED",bg:"#EDE9FE"},
 ];
 const ARTISTS={
-  luar: {name:"Luar La L",color:"#E24B4A",bg:"#FCEBEB",short:"LL"},
+  luar: {name:"Luar La L",color:"#E03A38",bg:"#1a0a0a",short:"LL"},
   beele:{name:"Beele",    color:"#0F6E56",bg:"#E1F5EE",short:"BE"},
   hades:{name:"Hades 66", color:"#7C3AED",bg:"#EDE9FE",short:"H6"},
 };
@@ -94,7 +95,7 @@ const MKTG=[
   {id:"m6",date:"2025-07-26",artist:"beele",city:"Málaga",venue:"Urban Paradise",type:"reel",time:"Post show",caption:"Málaga cierra el verano\n@beele Tour 2026 wrapped ✅\nDe Ibiza a Canarias 🙏🌍\n💬 Bookings DM",ht:"#malaga #beele #tourwrapped #soundengineer #worldwide",tip:"Reel resumen: Pacha, Movistar Arena, Estadio Olímpico.",priority:true},
   {id:"m7",date:"2025-08-01",artist:"luar",city:"Girona",venue:"Festival Mediterránea",type:"reel",time:"Post show",caption:"Fin del tour 🙌\nFestival Mediterránea, Girona\n@luar_lal Tour 2026 wrapped ✅\nGracias equipo 🎛🌍\n💬 Bookings DM",ht:"#girona #luarlal #tourwrapped #soundengineer #worldwide",tip:"Reel resumen con mejores momentos.",priority:true},
 ];
-const TYPE={reel:{l:"Reel",e:"🎬",c:"#E24B4A",b:"#FCEBEB"},foto:{l:"Foto",e:"📸",c:"#185FA5",b:"#E6F1FB"},historia:{l:"Historia",e:"📱",c:"#0F6E56",b:"#E1F5EE"}};
+const TYPE={reel:{l:"Reel",e:"🎬",c:"#E03A38",b:"#1a0a0a"},foto:{l:"Foto",e:"📸",c:"#185FA5",b:"#E6F1FB"},historia:{l:"Historia",e:"📱",c:"#0F6E56",b:"#E1F5EE"}};
 
 const OFFICE_SYS=`Eres el asistente de oficina virtual de Andrés Ortiz, ingeniero de sonido. Ayudas a redactar emails y WhatsApp sobre riders técnicos.
 ANDRÉS: Tel +34 685 667 521 | ing1andresortiz@gmail.com | @andres_ortizp
@@ -174,22 +175,22 @@ function AssignModal({show,onClose,onSave}){
   };
   const removeFile=i=>setFiles(prev=>prev.filter((_,idx)=>idx!==i));
 
-  const label=(txt)=>React.createElement("div",{style:{fontSize:10,fontWeight:700,color:"#9ca3af",textTransform:"uppercase",letterSpacing:1,margin:"12px 0 7px"}},txt);
-  const timeInput=(val,set,ph)=>React.createElement("input",{type:"time",value:val,onChange:e=>set(e.target.value),style:{width:"100%",padding:"8px 11px",borderRadius:9,border:"2px solid #e5e7eb",fontSize:14,outline:"none",background:"#fafafa",color:"#111",marginBottom:4}});
+  const label=(txt)=>React.createElement("div",{style:{fontSize:10,fontWeight:700,color:"#555555",textTransform:"uppercase",letterSpacing:1,margin:"12px 0 7px"}},txt);
+  const timeInput=(val,set,ph)=>React.createElement("input",{type:"time",value:val,onChange:e=>set(e.target.value),style:{width:"100%",padding:"8px 11px",borderRadius:9,border:"1.5px solid #222",fontSize:14,outline:"none",background:"#0d0d0d",color:"#f0ebe4",marginBottom:4}});
 
   return React.createElement("div",{onClick:onClose,style:{position:"fixed",inset:0,background:"rgba(0,0,0,.65)",zIndex:200,display:"flex",alignItems:"flex-end"}},
-    React.createElement("div",{onClick:e=>e.stopPropagation(),style:{background:"#fff",borderRadius:"20px 20px 0 0",padding:"18px 16px 44px",width:"100%",maxHeight:"92vh",overflow:"auto"}},
+    React.createElement("div",{onClick:e=>e.stopPropagation(),style:{background:"#111111",borderRadius:"20px 20px 0 0",padding:"18px 16px 44px",width:"100%",maxHeight:"92vh",overflow:"auto"}},
       React.createElement("div",{style:{width:38,height:4,background:"#e5e7eb",borderRadius:2,margin:"0 auto 14px"}}),
       React.createElement("div",{style:{fontSize:11,background:a.bg,color:a.color,borderRadius:6,padding:"2px 9px",display:"inline-block",fontWeight:700,marginBottom:8}},a.name),
       React.createElement("div",{style:{fontSize:16,fontWeight:700,marginBottom:2}},show.venue),
-      React.createElement("div",{style:{fontSize:12,color:"#6b7280",marginBottom:14}},fmtFull(show.date)+" · "+show.city),
+      React.createElement("div",{style:{fontSize:12,color:"#666666",marginBottom:14}},fmtFull(show.date)+" · "+show.city),
 
       label("Técnico asignado"),
       TEAM.map(m=>{
         const on=sel.includes(m.id);
         return React.createElement("div",{key:m.id,onClick:()=>toggle(m.id),style:{display:"flex",alignItems:"center",gap:10,padding:"8px 12px",borderRadius:10,border:on?"2px solid "+m.color:"2px solid #e5e7eb",background:on?m.bg:"#fafafa",cursor:"pointer",marginBottom:7}},
           React.createElement(Av,{m,sz:28}),
-          React.createElement("span",{style:{fontSize:13,fontWeight:600,color:on?m.color:"#374151",flex:1}},m.name),
+          React.createElement("span",{style:{fontSize:13,fontWeight:600,color:on?m.color:"#f0ebe4",flex:1}},m.name),
           on&&React.createElement("span",{style:{color:m.color}},"✓")
         );
       }),
@@ -203,36 +204,36 @@ function AssignModal({show,onClose,onSave}){
 
       label("Horarios del show"),
       React.createElement("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:4}},
-        React.createElement("div",null,React.createElement("div",{style:{fontSize:10,color:"#9ca3af",marginBottom:3}},"Llegada"),timeInput(llegada,setLlegada)),
-        React.createElement("div",null,React.createElement("div",{style:{fontSize:10,color:"#9ca3af",marginBottom:3}},"Soundcheck"),timeInput(soundcheck,setSoundcheck)),
-        React.createElement("div",null,React.createElement("div",{style:{fontSize:10,color:"#9ca3af",marginBottom:3}},"Show"),timeInput(showtime,setShowtime))
+        React.createElement("div",null,React.createElement("div",{style:{fontSize:10,color:"#555555",marginBottom:3}},"Llegada"),timeInput(llegada,setLlegada)),
+        React.createElement("div",null,React.createElement("div",{style:{fontSize:10,color:"#555555",marginBottom:3}},"Soundcheck"),timeInput(soundcheck,setSoundcheck)),
+        React.createElement("div",null,React.createElement("div",{style:{fontSize:10,color:"#555555",marginBottom:3}},"Show"),timeInput(showtime,setShowtime))
       ),
 
       label("Contacto del venue"),
-      React.createElement("input",{value:contacto,onChange:e=>setContacto(e.target.value),placeholder:"Nombre · Tel · Email del responsable",style:{width:"100%",padding:"8px 11px",borderRadius:9,border:"2px solid #e5e7eb",fontSize:13,outline:"none",background:"#fafafa",color:"#111",marginBottom:4}}),
+      React.createElement("input",{value:contacto,onChange:e=>setContacto(e.target.value),placeholder:"Nombre · Tel · Email del responsable",style:{width:"100%",padding:"8px 11px",borderRadius:9,border:"1.5px solid #222",fontSize:13,outline:"none",background:"#0d0d0d",color:"#f0ebe4",marginBottom:4}}),
 
       label("Notas para el técnico"),
-      React.createElement("textarea",{value:notes,onChange:e=>setNotes(e.target.value),placeholder:"Instrucciones, detalles del rider, accesos, parking...",style:{width:"100%",padding:"8px 11px",borderRadius:9,border:"2px solid #e5e7eb",fontSize:13,resize:"none",outline:"none",fontFamily:"inherit",minHeight:72,background:"#fafafa",marginBottom:4}}),
+      React.createElement("textarea",{value:notes,onChange:e=>setNotes(e.target.value),placeholder:"Instrucciones, detalles del rider, accesos, parking...",style:{width:"100%",padding:"8px 11px",borderRadius:9,border:"1.5px solid #222",fontSize:13,resize:"none",outline:"none",fontFamily:"inherit",minHeight:72,background:"#0d0d0d",marginBottom:4}}),
 
       label("Archivos — contra-riders, planos, documentos"),
       files.map((f,i)=>React.createElement("div",{key:i,style:{display:"flex",alignItems:"center",gap:8,padding:"8px 11px",background:"#f9fafb",borderRadius:9,marginBottom:6,border:"1.5px solid #e5e7eb"}},
         React.createElement("span",{style:{fontSize:16}},f.type&&f.type.includes("pdf")?"📄":"📎"),
         React.createElement("div",{style:{flex:1,minWidth:0}},
           React.createElement("div",{style:{fontSize:12,fontWeight:600,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},f.name),
-          React.createElement("div",{style:{fontSize:10,color:"#9ca3af"}},f.uploaded)
+          React.createElement("div",{style:{fontSize:9,color:"#E03A38",letterSpacing:2,textTransform:"uppercase"}},f.uploaded)
         ),
         React.createElement("a",{href:f.data,download:f.name,style:{fontSize:11,color:"#185FA5",fontWeight:600,textDecoration:"none",padding:"3px 8px",background:"#E6F1FB",borderRadius:6}},"↓"),
-        React.createElement("button",{onClick:()=>removeFile(i),style:{background:"none",border:"none",color:"#9ca3af",cursor:"pointer",fontSize:16}},"×")
+        React.createElement("button",{onClick:()=>removeFile(i),style:{background:"none",border:"none",color:"#555555",cursor:"pointer",fontSize:16}},"×")
       )),
       React.createElement("label",{style:{display:"flex",alignItems:"center",gap:8,padding:"8px 11px",background:"#f9fafb",border:"2px dashed #e5e7eb",borderRadius:9,cursor:"pointer",marginBottom:12}},
         React.createElement("span",{style:{fontSize:16}},"📎"),
-        React.createElement("span",{style:{fontSize:12,color:"#6b7280"}},"Subir archivo (PDF, imagen, documento)"),
+        React.createElement("span",{style:{fontSize:12,color:"#666666"}},"Subir archivo (PDF, imagen, documento)"),
         React.createElement("input",{type:"file",accept:"*/*",onChange:handleFile,style:{display:"none"}})
       ),
 
       React.createElement("div",{style:{display:"flex",gap:8}},
-        React.createElement("button",{onClick:onClose,style:{flex:1,padding:"10px",borderRadius:10,border:"2px solid #e5e7eb",background:"#fff",fontWeight:600,fontSize:13,cursor:"pointer"}},"Cancelar"),
-        React.createElement("button",{onClick:()=>onSave({...show,assigned:sel,status,notes,llegada,soundcheck,showtime,contacto,files}),style:{flex:2,padding:"10px",borderRadius:10,border:"none",background:"#E24B4A",color:"#fff",fontWeight:700,fontSize:13,cursor:"pointer"}},"Guardar")
+        React.createElement("button",{onClick:onClose,style:{flex:1,padding:"10px",borderRadius:10,border:"1.5px solid #222",background:"#111111",fontWeight:600,fontSize:13,cursor:"pointer"}},"Cancelar"),
+        React.createElement("button",{onClick:()=>onSave({...show,assigned:sel,status,notes,llegada,soundcheck,showtime,contacto,files}),style:{flex:2,padding:"10px",borderRadius:10,border:"none",background:"#E03A38",color:"#fff",fontWeight:700,fontSize:13,cursor:"pointer"}},"Guardar")
       )
     )
   );
@@ -244,7 +245,7 @@ function MktgModal({ev,onClose}){
   const copy=(txt,id)=>{navigator.clipboard.writeText(txt);setCp(id);setTimeout(()=>setCp(null),2000);};
   const t=TYPE[ev.type];const a=ARTISTS[ev.artist];
   return React.createElement("div",{onClick:onClose,style:{position:"fixed",inset:0,background:"rgba(0,0,0,.65)",zIndex:200,display:"flex",alignItems:"flex-end"}},
-    React.createElement("div",{onClick:e=>e.stopPropagation(),style:{background:"#fff",borderRadius:"20px 20px 0 0",padding:"18px 15px 44px",width:"100%",maxHeight:"86vh",overflow:"auto"}},
+    React.createElement("div",{onClick:e=>e.stopPropagation(),style:{background:"#111111",borderRadius:"20px 20px 0 0",padding:"18px 15px 44px",width:"100%",maxHeight:"86vh",overflow:"auto"}},
       React.createElement("div",{style:{width:38,height:4,background:"#e5e7eb",borderRadius:2,margin:"0 auto 14px"}}),
       React.createElement("div",{style:{display:"flex",gap:6,marginBottom:5,flexWrap:"wrap"}},
         React.createElement("span",{style:{background:a.bg,color:a.color,borderRadius:6,padding:"2px 8px",fontSize:10,fontWeight:700}},a.name),
@@ -252,24 +253,24 @@ function MktgModal({ev,onClose}){
         ev.priority&&React.createElement("span",{style:{background:"#fef3c7",color:"#d97706",borderRadius:6,padding:"2px 8px",fontSize:10,fontWeight:700}},"⭐ Prioritario")
       ),
       React.createElement("div",{style:{fontSize:16,fontWeight:700,marginBottom:2}},ev.venue),
-      React.createElement("div",{style:{fontSize:11,color:"#6b7280",marginBottom:14}},"📅 "+fmtFull(ev.date)+" · 📍 "+ev.city+" · ⏰ "+ev.time),
+      React.createElement("div",{style:{fontSize:11,color:"#666666",marginBottom:14}},"📅 "+fmtFull(ev.date)+" · 📍 "+ev.city+" · ⏰ "+ev.time),
       React.createElement("div",{style:{background:"#f9fafb",borderRadius:11,padding:13,marginBottom:10}},
-        React.createElement("div",{style:{fontSize:10,fontWeight:700,color:"#9ca3af",textTransform:"uppercase",letterSpacing:1,marginBottom:6}},"💡 Tip"),
-        React.createElement("div",{style:{fontSize:13,color:"#374151",lineHeight:1.55}},ev.tip)
+        React.createElement("div",{style:{fontSize:10,fontWeight:700,color:"#555555",textTransform:"uppercase",letterSpacing:1,marginBottom:6}},"💡 Tip"),
+        React.createElement("div",{style:{fontSize:13,color:"#f0ebe4",lineHeight:1.55}},ev.tip)
       ),
       React.createElement("div",{style:{background:"#f9fafb",borderRadius:11,padding:13,marginBottom:10}},
         React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:7}},
-          React.createElement("div",{style:{fontSize:10,fontWeight:700,color:"#9ca3af",textTransform:"uppercase",letterSpacing:1}},"✍️ Caption"),
+          React.createElement("div",{style:{fontSize:10,fontWeight:700,color:"#555555",textTransform:"uppercase",letterSpacing:1}},"✍️ Caption"),
           React.createElement("button",{onClick:()=>copy(ev.caption,"cap"),style:{padding:"3px 10px",background:cp==="cap"?"#16a34a":"#111",color:"#fff",border:"none",borderRadius:8,fontSize:11,fontWeight:600,cursor:"pointer"}},cp==="cap"?"✓ Copiado":"Copiar")
         ),
-        React.createElement("div",{style:{fontSize:13,color:"#374151",whiteSpace:"pre-wrap",lineHeight:1.55}},ev.caption)
+        React.createElement("div",{style:{fontSize:13,color:"#f0ebe4",whiteSpace:"pre-wrap",lineHeight:1.55}},ev.caption)
       ),
       React.createElement("div",{style:{background:"#f9fafb",borderRadius:11,padding:13}},
         React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:7}},
-          React.createElement("div",{style:{fontSize:10,fontWeight:700,color:"#9ca3af",textTransform:"uppercase",letterSpacing:1}},"# Hashtags"),
+          React.createElement("div",{style:{fontSize:10,fontWeight:700,color:"#555555",textTransform:"uppercase",letterSpacing:1}},"# Hashtags"),
           React.createElement("button",{onClick:()=>copy(ev.ht,"ht"),style:{padding:"3px 10px",background:cp==="ht"?"#16a34a":"#111",color:"#fff",border:"none",borderRadius:8,fontSize:11,fontWeight:600,cursor:"pointer"}},cp==="ht"?"✓ Copiado":"Copiar")
         ),
-        React.createElement("div",{style:{fontSize:12,color:"#6b7280",lineHeight:1.7}},ev.ht)
+        React.createElement("div",{style:{fontSize:12,color:"#666666",lineHeight:1.7}},ev.ht)
       )
     )
   );
@@ -282,7 +283,7 @@ function ShowsPanel({shows,setShows,conflicts}){
   const [editing,setEditing]=React.useState(null);
   const filtered=shows.filter(s=>fa==="all"||s.artist===fa).filter(s=>fp==="all"||s.assigned.includes(fp)).sort((a,b)=>a.date.localeCompare(b.date));
   const grouped=groupM(filtered);
-  const pill=(label,active,onClick,color,bg)=>React.createElement("button",{onClick,style:{padding:"5px 12px",borderRadius:20,border:active?"2px solid "+color:"2px solid #e5e7eb",background:active?bg:"#fff",color:active?color:"#374151",fontWeight:600,fontSize:11,cursor:"pointer",whiteSpace:"nowrap"}},label);
+  const pill=(label,active,onClick,color,bg)=>React.createElement("button",{onClick,style:{padding:"5px 12px",borderRadius:20,border:active?"2px solid "+color:"1px solid #2a2a2a",background:active?bg:"#1a1a1a",color:active?color:"#888888",fontWeight:600,fontSize:11,cursor:"pointer",whiteSpace:"nowrap"}},label);
   return React.createElement("div",{style:{flex:1,overflow:"auto",padding:"11px 14px 80px"}},
     React.createElement("div",{style:{display:"flex",gap:6,flexWrap:"wrap",marginBottom:7}},
       pill("Todos",fa==="all",()=>setFa("all"),"#fff","#111"),
@@ -294,9 +295,9 @@ function ShowsPanel({shows,setShows,conflicts}){
     ),
     Object.keys(grouped).sort().map(month=>
       React.createElement("div",{key:month,style:{marginBottom:18}},
-        React.createElement("div",{style:{fontSize:10,fontWeight:700,color:"#9ca3af",textTransform:"uppercase",letterSpacing:1.5,marginBottom:9,display:"flex",alignItems:"center",gap:7}},
+        React.createElement("div",{style:{fontSize:10,fontWeight:700,color:"#555555",textTransform:"uppercase",letterSpacing:1.5,marginBottom:9,display:"flex",alignItems:"center",gap:7}},
           React.createElement("span",null,monthName(month)),
-          React.createElement("span",{style:{background:"#e5e7eb",color:"#6b7280",borderRadius:20,padding:"1px 7px",fontSize:10}},grouped[month].length)
+          React.createElement("span",{style:{background:"#e5e7eb",color:"#666666",borderRadius:20,padding:"1px 7px",fontSize:10}},grouped[month].length)
         ),
         grouped[month].map(s=>{
           const a=ARTISTS[s.artist];const members=TEAM.filter(m=>s.assigned.includes(m.id));const conflict=conflicts.has(s.id);
@@ -304,7 +305,7 @@ function ShowsPanel({shows,setShows,conflicts}){
             React.createElement("div",{style:{display:"flex",alignItems:"flex-start",gap:9}},
               React.createElement("div",{style:{textAlign:"center",minWidth:32}},
                 React.createElement("div",{style:{fontSize:16,fontWeight:800,lineHeight:1}},new Date(s.date+"T12:00:00").getDate()),
-                React.createElement("div",{style:{fontSize:9,color:"#9ca3af",textTransform:"uppercase"}},new Date(s.date+"T12:00:00").toLocaleDateString("es-ES",{month:"short"}))
+                React.createElement("div",{style:{fontSize:9,color:"#555555",textTransform:"uppercase"}},new Date(s.date+"T12:00:00").toLocaleDateString("es-ES",{month:"short"}))
               ),
               React.createElement("div",{style:{flex:1,minWidth:0}},
                 React.createElement("div",{style:{display:"flex",alignItems:"center",gap:5,marginBottom:3}},
@@ -312,7 +313,7 @@ function ShowsPanel({shows,setShows,conflicts}){
                   conflict&&React.createElement("span",{style:{fontSize:10,color:"#dc2626",fontWeight:700}},"⚡")
                 ),
                 React.createElement("div",{style:{fontSize:13,fontWeight:700,marginBottom:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},s.venue),
-                React.createElement("div",{style:{fontSize:11,color:"#6b7280"}},"📍 "+s.city)
+                React.createElement("div",{style:{fontSize:11,color:"#666666"}},"📍 "+s.city)
               ),
               React.createElement("div",{style:{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:5}},
                 React.createElement(StatusDot,{s:s.status}),
@@ -323,7 +324,7 @@ function ShowsPanel({shows,setShows,conflicts}){
                 )
               )
             ),
-            s.notes&&React.createElement("div",{style:{marginTop:7,padding:"5px 9px",background:"#f9fafb",borderRadius:7,fontSize:11,color:"#6b7280"}},"📝 "+s.notes)
+            s.notes&&React.createElement("div",{style:{marginTop:7,padding:"5px 9px",background:"#f9fafb",borderRadius:7,fontSize:11,color:"#666666"}},"📝 "+s.notes)
           );
         })
       )
@@ -339,32 +340,32 @@ function MktgPanel(){
   const filtered=MKTG.filter(e=>fa==="all"||e.artist===fa).sort((a,b)=>a.date.localeCompare(b.date));
   const todayList=MKTG.filter(e=>isToday(e.date));
   const priList=MKTG.filter(e=>e.priority);
-  const pill=(label,active,onClick,color,bg)=>React.createElement("button",{onClick,style:{padding:"5px 12px",borderRadius:20,border:active?"2px solid "+color:"2px solid #e5e7eb",background:active?bg:"#fff",color:active?color:"#374151",fontWeight:600,fontSize:11,cursor:"pointer",whiteSpace:"nowrap"}},label);
+  const pill=(label,active,onClick,color,bg)=>React.createElement("button",{onClick,style:{padding:"5px 12px",borderRadius:20,border:active?"2px solid "+color:"1px solid #2a2a2a",background:active?bg:"#1a1a1a",color:active?color:"#888888",fontWeight:600,fontSize:11,cursor:"pointer",whiteSpace:"nowrap"}},label);
   const card=(ev,extra={})=>{
     const a=ARTISTS[ev.artist];const t=TYPE[ev.type];const today=isToday(ev.date);const past=isPast(ev.date);
-    return React.createElement("div",{key:ev.id,onClick:()=>setSel(ev),style:{background:today?"#fff8f8":"#fff",borderRadius:11,padding:"10px 13px",marginBottom:7,cursor:"pointer",border:today?"2px solid #E24B4A":"1.5px solid #f3f4f6",opacity:past?.5:1,...extra}},
+    return React.createElement("div",{key:ev.id,onClick:()=>setSel(ev),style:{background:today?"#fff8f8":"#fff",borderRadius:11,padding:"10px 13px",marginBottom:7,cursor:"pointer",border:today?"2px solid #E03A38":"1.5px solid #f3f4f6",opacity:past?.5:1,...extra}},
       React.createElement("div",{style:{display:"flex",alignItems:"center",gap:9}},
         React.createElement("div",{style:{textAlign:"center",minWidth:32}},
-          React.createElement("div",{style:{fontSize:15,fontWeight:800,color:today?"#E24B4A":"#111",lineHeight:1}},new Date(ev.date+"T12:00:00").getDate()),
-          React.createElement("div",{style:{fontSize:9,color:"#9ca3af",textTransform:"uppercase"}},new Date(ev.date+"T12:00:00").toLocaleDateString("es-ES",{month:"short"}))
+          React.createElement("div",{style:{fontSize:15,fontWeight:800,color:today?"#E03A38":"#111",lineHeight:1}},new Date(ev.date+"T12:00:00").getDate()),
+          React.createElement("div",{style:{fontSize:9,color:"#555555",textTransform:"uppercase"}},new Date(ev.date+"T12:00:00").toLocaleDateString("es-ES",{month:"short"}))
         ),
         React.createElement("div",{style:{flex:1,minWidth:0}},
           React.createElement("div",{style:{display:"flex",gap:5,marginBottom:3,flexWrap:"wrap"}},
             React.createElement("span",{style:{background:a.bg,color:a.color,borderRadius:5,padding:"1px 6px",fontSize:10,fontWeight:700}},a.name),
             React.createElement("span",{style:{background:t.b,color:t.c,borderRadius:5,padding:"1px 6px",fontSize:10,fontWeight:700}},t.e+" "+t.l),
-            today&&React.createElement("span",{style:{background:"#E24B4A",color:"#fff",borderRadius:5,padding:"1px 6px",fontSize:10,fontWeight:700}},"HOY"),
+            today&&React.createElement("span",{style:{background:"#E03A38",color:"#fff",borderRadius:5,padding:"1px 6px",fontSize:10,fontWeight:700}},"HOY"),
             ev.priority&&React.createElement("span",{style:{background:"#fef3c7",color:"#d97706",borderRadius:5,padding:"1px 6px",fontSize:10,fontWeight:700}},"⭐")
           ),
           React.createElement("div",{style:{fontSize:13,fontWeight:700,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},ev.venue),
-          React.createElement("div",{style:{fontSize:11,color:"#6b7280"}},"📍 "+ev.city)
+          React.createElement("div",{style:{fontSize:11,color:"#666666"}},"📍 "+ev.city)
         ),
-        React.createElement("span",{style:{fontSize:14,color:"#9ca3af"}},"›")
+        React.createElement("span",{style:{fontSize:14,color:"#555555"}},"›")
       )
     );
   };
   return React.createElement("div",{style:{flex:1,overflow:"auto",padding:"11px 14px 80px"}},
-    todayList.length>0&&React.createElement("div",{style:{background:"#fef2f2",border:"2px solid #E24B4A",borderRadius:11,padding:"10px 13px",marginBottom:11}},
-      React.createElement("div",{style:{fontSize:11,fontWeight:700,color:"#E24B4A",marginBottom:5}},"🔴 PUBLICAR HOY"),
+    todayList.length>0&&React.createElement("div",{style:{background:"#fef2f2",border:"2px solid #E03A38",borderRadius:11,padding:"10px 13px",marginBottom:11}},
+      React.createElement("div",{style:{fontSize:11,fontWeight:700,color:"#E03A38",marginBottom:5}},"🔴 PUBLICAR HOY"),
       todayList.map(ev=>React.createElement("div",{key:ev.id,onClick:()=>setSel(ev),style:{fontSize:12,cursor:"pointer",padding:"3px 0",borderBottom:"0.5px solid #fca5a5"}},TYPE[ev.type].e+" "+ev.venue))
     ),
     priList.length>0&&React.createElement("div",{style:{marginBottom:13}},
@@ -375,7 +376,7 @@ function MktgPanel(){
       pill("Todos",fa==="all",()=>setFa("all"),"#fff","#111"),
       Object.entries(ARTISTS).map(([k,a])=>pill(a.name,fa===k,()=>setFa(fa===k?"all":k),a.color,a.bg))
     ),
-    React.createElement("div",{style:{fontSize:10,fontWeight:700,color:"#9ca3af",textTransform:"uppercase",letterSpacing:1,marginBottom:7}},"Todos los posts"),
+    React.createElement("div",{style:{fontSize:10,fontWeight:700,color:"#555555",textTransform:"uppercase",letterSpacing:1,marginBottom:7}},"Todos los posts"),
     filtered.map(ev=>card(ev)),
     sel&&React.createElement(MktgModal,{ev:sel,onClose:()=>setSel(null)})
   );
@@ -413,34 +414,34 @@ function OfficePanel(){
     setLoading(false);
   };
   return React.createElement("div",{style:{flex:1,display:"flex",flexDirection:"column",overflow:"hidden"}},
-    React.createElement("div",{style:{background:"#fff",borderBottom:"1.5px solid #f3f4f6",display:"flex",flexShrink:0}},
-      [["chat","💬 Chat"],["quick","⚡ Acciones"]].map(([t,l])=>React.createElement("button",{key:t,onClick:()=>setOTab(t),style:{flex:1,padding:"10px",border:"none",background:"transparent",fontSize:12,fontWeight:600,cursor:"pointer",color:oTab===t?"#E24B4A":"#9ca3af",borderBottom:oTab===t?"2.5px solid #E24B4A":"2.5px solid transparent"}},l))
+    React.createElement("div",{style:{background:"#111111",borderBottom:"1.5px solid #f3f4f6",display:"flex",flexShrink:0}},
+      [["chat","💬 Chat"],["quick","⚡ Acciones"]].map(([t,l])=>React.createElement("button",{key:t,onClick:()=>setOTab(t),style:{flex:1,padding:"10px",border:"none",background:"transparent",fontSize:12,fontWeight:600,cursor:"pointer",color:oTab===t?"#E03A38":"#9ca3af",borderBottom:oTab===t?"2.5px solid #E03A38":"2.5px solid transparent"}},l))
     ),
-    oTab==="quick"&&React.createElement("div",{style:{flex:1,overflow:"auto",padding:"13px 14px 30px",background:"#f8f9fa"}},
-      React.createElement("div",{style:{fontSize:12,color:"#6b7280",marginBottom:12}},"Toca una acción y el agente la ejecuta con los datos reales de tus riders:"),
+    oTab==="quick"&&React.createElement("div",{style:{flex:1,overflow:"auto",padding:"13px 14px 30px",background:"#0a0a0a"}},
+      React.createElement("div",{style:{fontSize:12,color:"#666666",marginBottom:12}},"Toca una acción y el agente la ejecuta con los datos reales de tus riders:"),
       React.createElement("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:9}},
-        OFFICE_QUICK.map((a,i)=>React.createElement("button",{key:i,onClick:()=>send(a.p),style:{background:"#fff",border:"1.5px solid #f3f4f6",borderRadius:13,padding:"13px 11px",textAlign:"left",cursor:"pointer",display:"flex",flexDirection:"column",gap:7}},React.createElement("span",{style:{fontSize:20}},a.e),React.createElement("span",{style:{fontSize:11,fontWeight:600,color:"#374151",lineHeight:1.35}},a.l)))
+        OFFICE_QUICK.map((a,i)=>React.createElement("button",{key:i,onClick:()=>send(a.p),style:{background:"#111111",border:"1px solid #1e1e1e",borderRadius:13,padding:"13px 11px",textAlign:"left",cursor:"pointer",display:"flex",flexDirection:"column",gap:7}},React.createElement("span",{style:{fontSize:20}},a.e),React.createElement("span",{style:{fontSize:11,fontWeight:600,color:"#f0ebe4",lineHeight:1.35}},a.l)))
       )
     ),
-    oTab==="chat"&&React.createElement("div",{style:{flex:1,overflow:"auto",padding:"14px 14px 6px",background:"#f8f9fa"}},
+    oTab==="chat"&&React.createElement("div",{style:{flex:1,overflow:"auto",padding:"14px 14px 6px",background:"#0a0a0a"}},
       msgs.map((m,i)=>{
         const isU=m.role==="user";
         return React.createElement("div",{key:i,style:{display:"flex",flexDirection:isU?"row-reverse":"row",gap:9,marginBottom:13,alignItems:"flex-end"}},
-          React.createElement("div",{style:{width:30,height:30,borderRadius:"50%",background:isU?"#E24B4A":"#111",display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,flexShrink:0}},isU?"👤":"🏢"),
-          React.createElement("div",{style:{maxWidth:"80%",background:isU?"#E24B4A":"#fff",color:isU?"#fff":"#1a1a1a",borderRadius:isU?"16px 16px 4px 16px":"16px 16px 16px 4px",padding:"10px 14px",fontSize:13,lineHeight:1.6,boxShadow:"0 2px 8px rgba(0,0,0,.07)",border:isU?"none":"1.5px solid #f0f0f0",whiteSpace:"pre-wrap",wordBreak:"break-word"}},m.content)
+          React.createElement("div",{style:{width:30,height:30,borderRadius:"50%",background:isU?"#E03A38":"#111",display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,flexShrink:0}},isU?"👤":"🏢"),
+          React.createElement("div",{style:{maxWidth:"80%",background:isU?"#E03A38":"#fff",color:isU?"#fff":"#1a1a1a",borderRadius:isU?"16px 16px 4px 16px":"16px 16px 16px 4px",padding:"10px 14px",fontSize:13,lineHeight:1.6,boxShadow:"0 2px 8px rgba(0,0,0,.07)",border:isU?"none":"1.5px solid #f0f0f0",whiteSpace:"pre-wrap",wordBreak:"break-word"}},m.content)
         );
       }),
       loading&&React.createElement("div",{style:{display:"flex",gap:9,marginBottom:13,alignItems:"flex-end"}},
         React.createElement("div",{style:{width:30,height:30,borderRadius:"50%",background:"#111",display:"flex",alignItems:"center",justifyContent:"center",fontSize:13}},"🏢"),
-        React.createElement("div",{style:{background:"#fff",borderRadius:"16px 16px 16px 4px",padding:"12px 14px",border:"1.5px solid #f0f0f0",display:"flex",gap:5,alignItems:"center"}},
+        React.createElement("div",{style:{background:"#111111",borderRadius:"16px 16px 16px 4px",padding:"12px 14px",border:"1.5px solid #f0f0f0",display:"flex",gap:5,alignItems:"center"}},
           ...[0,1,2].map(i=>React.createElement("div",{key:i,style:{width:7,height:7,borderRadius:"50%",background:"#9ca3af",animation:"bounce 1.2s infinite",animationDelay:i*.2+"s"}}))
         )
       ),
       React.createElement("div",{ref:bottom})
     ),
-    oTab==="chat"&&React.createElement("div",{style:{background:"#fff",borderTop:"1.5px solid #f3f4f6",padding:"10px 14px",display:"flex",gap:9,alignItems:"flex-end",paddingBottom:"max(10px,env(safe-area-inset-bottom))"}},
-      React.createElement("textarea",{value:input,onChange:e=>setInput(e.target.value),onKeyDown:e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();send();}},placeholder:"Pega un mensaje recibido o dime qué necesitas redactar...",rows:2,style:{flex:1,padding:"9px 12px",borderRadius:14,border:"1.5px solid #e5e7eb",fontSize:13,resize:"none",outline:"none",fontFamily:"inherit",background:"#f9fafb",lineHeight:1.5,color:"#1a1a1a"}}),
-      React.createElement("button",{onClick:()=>send(),disabled:!input.trim()||loading,style:{width:40,height:40,borderRadius:"50%",border:"none",background:input.trim()&&!loading?"#E24B4A":"#e5e7eb",color:"#fff",fontSize:17,cursor:input.trim()&&!loading?"pointer":"default",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}},loading?"⏳":"➤")
+    oTab==="chat"&&React.createElement("div",{style:{background:"#111111",borderTop:"1.5px solid #f3f4f6",padding:"10px 14px",display:"flex",gap:9,alignItems:"flex-end",paddingBottom:"max(10px,env(safe-area-inset-bottom))"}},
+      React.createElement("textarea",{value:input,onChange:e=>setInput(e.target.value),onKeyDown:e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();send();}},placeholder:"Pega un mensaje recibido o dime qué necesitas redactar...",rows:2,style:{flex:1,padding:"9px 12px",borderRadius:14,border:"1.5px solid #e5e7eb",fontSize:13,resize:"none",outline:"none",fontFamily:"inherit",background:"#f9fafb",lineHeight:1.5,color:"#f0ebe4"}}),
+      React.createElement("button",{onClick:()=>send(),disabled:!input.trim()||loading,style:{width:40,height:40,borderRadius:"50%",border:"none",background:input.trim()&&!loading?"#E03A38":"#e5e7eb",color:"#fff",fontSize:17,cursor:input.trim()&&!loading?"pointer":"default",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}},loading?"⏳":"➤")
     )
   );
 }
@@ -448,18 +449,18 @@ function OfficePanel(){
 // ── STATS PANEL ───────────────────────────────────────────────
 function StatsPanel({shows,conflicts}){
   const confDays=[...new Set(shows.filter(s=>conflicts.has(s.id)).map(s=>s.date))].length;
-  return React.createElement("div",{style:{flex:1,overflow:"auto",padding:"14px 14px 80px",background:"#f8f9fa"}},
+  return React.createElement("div",{style:{flex:1,overflow:"auto",padding:"14px 14px 80px",background:"#0a0a0a"}},
     React.createElement("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:9,marginBottom:13}},
-      [["Shows totales",shows.length,"#E24B4A"],["Confirmados",shows.filter(s=>s.status==="confirmed").length,"#16a34a"],["TBC",shows.filter(s=>s.status==="tbc").length,"#d97706"],["Conflictos",confDays,"#ef4444"]].map(([l,v,c])=>
-        React.createElement("div",{key:l,style:{background:"#fff",borderRadius:11,padding:13,border:"1.5px solid #f3f4f6"}},React.createElement("div",{style:{fontSize:11,color:"#9ca3af",fontWeight:600,marginBottom:3}},l),React.createElement("div",{style:{fontSize:26,fontWeight:800,color:c}},v))
+      [["Shows totales",shows.length,"#E03A38"],["Confirmados",shows.filter(s=>s.status==="confirmed").length,"#16a34a"],["TBC",shows.filter(s=>s.status==="tbc").length,"#d97706"],["Conflictos",confDays,"#ef4444"]].map(([l,v,c])=>
+        React.createElement("div",{key:l,style:{background:"#111111",borderRadius:11,padding:13,border:"1px solid #1e1e1e"}},React.createElement("div",{style:{fontSize:11,color:"#555555",fontWeight:600,marginBottom:3}},l),React.createElement("div",{style:{fontSize:26,fontWeight:800,color:c}},v))
       )
     ),
-    React.createElement("div",{style:{background:"#fff",borderRadius:11,padding:"13px 15px",border:"1.5px solid #f3f4f6",marginBottom:10}},
-      React.createElement("div",{style:{fontSize:10,fontWeight:700,color:"#9ca3af",textTransform:"uppercase",letterSpacing:1,marginBottom:12}},"Shows por artista"),
+    React.createElement("div",{style:{background:"#111111",borderRadius:11,padding:"13px 15px",border:"1px solid #1e1e1e",marginBottom:10}},
+      React.createElement("div",{style:{fontSize:10,fontWeight:700,color:"#555555",textTransform:"uppercase",letterSpacing:1,marginBottom:12}},"Shows por artista"),
       Object.entries(ARTISTS).map(([k,a])=>{const cnt=shows.filter(s=>s.artist===k).length;return React.createElement("div",{key:k,style:{marginBottom:10}},React.createElement("div",{style:{display:"flex",justifyContent:"space-between",marginBottom:4}},React.createElement("span",{style:{fontSize:13,fontWeight:600,color:a.color}},a.name),React.createElement("span",{style:{fontSize:13,fontWeight:700}},cnt)),React.createElement("div",{style:{height:6,background:"#f3f4f6",borderRadius:3}},React.createElement("div",{style:{height:6,background:a.color,borderRadius:3,width:(cnt/shows.length*100)+"%"}})));})
     ),
-    React.createElement("div",{style:{background:"#fff",borderRadius:11,padding:"13px 15px",border:"1.5px solid #f3f4f6"}},
-      React.createElement("div",{style:{fontSize:10,fontWeight:700,color:"#9ca3af",textTransform:"uppercase",letterSpacing:1,marginBottom:12}},"Carga por técnico"),
+    React.createElement("div",{style:{background:"#111111",borderRadius:11,padding:"13px 15px",border:"1px solid #1e1e1e"}},
+      React.createElement("div",{style:{fontSize:10,fontWeight:700,color:"#555555",textTransform:"uppercase",letterSpacing:1,marginBottom:12}},"Carga por técnico"),
       TEAM.map(m=>{const cnt=shows.filter(s=>s.assigned.includes(m.id)).length;return React.createElement("div",{key:m.id,style:{marginBottom:10}},React.createElement("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}},React.createElement("div",{style:{display:"flex",alignItems:"center",gap:7}},React.createElement(Av,{m,sz:24}),React.createElement("span",{style:{fontSize:13,fontWeight:600}},m.name)),React.createElement("span",{style:{fontSize:13,fontWeight:700,color:m.color}},cnt+" shows")),React.createElement("div",{style:{height:6,background:"#f3f4f6",borderRadius:3}},React.createElement("div",{style:{height:6,background:m.color,borderRadius:3,width:(cnt/shows.length*100)+"%"}})));})
     )
   );
@@ -471,18 +472,18 @@ function ConflictsPanel({shows,conflicts,setShows}){
   const confShows=shows.filter(s=>conflicts.has(s.id)).sort((a,b)=>a.date.localeCompare(b.date));
   const grouped=groupM(confShows);
   const confDays=Object.keys(grouped).length;
-  if(confDays===0)return React.createElement("div",{style:{flex:1,display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:10,color:"#16a34a",background:"#f8f9fa"}},React.createElement("div",{style:{fontSize:40}},"✅"),React.createElement("div",{style:{fontSize:14,fontWeight:600}},"Sin conflictos"));
-  return React.createElement("div",{style:{flex:1,overflow:"auto",padding:"14px 14px 80px",background:"#f8f9fa"}},
+  if(confDays===0)return React.createElement("div",{style:{flex:1,display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:10,color:"#16a34a",background:"#0a0a0a"}},React.createElement("div",{style:{fontSize:40}},"✅"),React.createElement("div",{style:{fontSize:14,fontWeight:600}},"Sin conflictos"));
+  return React.createElement("div",{style:{flex:1,overflow:"auto",padding:"14px 14px 80px",background:"#0a0a0a"}},
     React.createElement("div",{style:{background:"#fef2f2",border:"1.5px solid #fca5a5",borderRadius:11,padding:"10px 13px",marginBottom:13,fontSize:12,color:"#dc2626",fontWeight:500}},"⚡ "+confDays+" días con shows simultáneos. Toca para reasignar."),
     Object.keys(grouped).sort().map(month=>
       React.createElement("div",{key:month,style:{marginBottom:18}},
         React.createElement("div",{style:{fontSize:10,fontWeight:700,color:"#dc2626",textTransform:"uppercase",letterSpacing:1,marginBottom:8}},monthName(month)),
         grouped[month].map(s=>{
           const a=ARTISTS[s.artist];const members=TEAM.filter(m=>s.assigned.includes(m.id));
-          return React.createElement("div",{key:s.id,onClick:()=>setEditing(s),style:{background:"#fff",borderRadius:11,padding:"10px 13px",marginBottom:7,cursor:"pointer",border:"2px solid #fca5a5"}},
+          return React.createElement("div",{key:s.id,onClick:()=>setEditing(s),style:{background:"#111111",borderRadius:11,padding:"10px 13px",marginBottom:7,cursor:"pointer",border:"2px solid #fca5a5"}},
             React.createElement("div",{style:{display:"flex",alignItems:"center",gap:9}},
-              React.createElement("div",{style:{textAlign:"center",minWidth:32}},React.createElement("div",{style:{fontSize:16,fontWeight:800,color:"#dc2626",lineHeight:1}},new Date(s.date+"T12:00:00").getDate()),React.createElement("div",{style:{fontSize:9,color:"#9ca3af",textTransform:"uppercase"}},new Date(s.date+"T12:00:00").toLocaleDateString("es-ES",{month:"short"}))),
-              React.createElement("div",{style:{flex:1}},React.createElement("span",{style:{background:a.bg,color:a.color,borderRadius:5,padding:"1px 6px",fontSize:10,fontWeight:700,display:"inline-block",marginBottom:3}},a.name),React.createElement("div",{style:{fontSize:13,fontWeight:700}},s.venue),React.createElement("div",{style:{fontSize:11,color:"#6b7280"}},"📍 "+s.city)),
+              React.createElement("div",{style:{textAlign:"center",minWidth:32}},React.createElement("div",{style:{fontSize:16,fontWeight:800,color:"#dc2626",lineHeight:1}},new Date(s.date+"T12:00:00").getDate()),React.createElement("div",{style:{fontSize:9,color:"#555555",textTransform:"uppercase"}},new Date(s.date+"T12:00:00").toLocaleDateString("es-ES",{month:"short"}))),
+              React.createElement("div",{style:{flex:1}},React.createElement("span",{style:{background:a.bg,color:a.color,borderRadius:5,padding:"1px 6px",fontSize:10,fontWeight:700,display:"inline-block",marginBottom:3}},a.name),React.createElement("div",{style:{fontSize:13,fontWeight:700}},s.venue),React.createElement("div",{style:{fontSize:11,color:"#666666"}},"📍 "+s.city)),
               React.createElement("div",{style:{display:"flex"}},members.map((m,i)=>React.createElement("div",{key:m.id,style:{marginLeft:i>0?-7:0,border:"2px solid #fff",borderRadius:"50%"}},React.createElement(Av,{m,sz:24}))))
             )
           );
@@ -496,7 +497,7 @@ function ConflictsPanel({shows,conflicts,setShows}){
 // ── MAIN APP ──────────────────────────────────────────────────
 // ── USERS & PINS
 const USERS={
-  "2512":{name:"Andrés Ortiz",    role:"admin",  memberId:"yo", initials:"YO",color:"#E24B4A",bg:"#FCEBEB"},
+  "2512":{name:"Andrés Ortiz",    role:"admin",  memberId:"yo", initials:"YO",color:"#E03A38",bg:"#1a0a0a"},
   "1234":{name:"Andrés Hernández",role:"worker", memberId:"w1", initials:"AH",color:"#185FA5",bg:"#E6F1FB"},
   "1111":{name:"Miguel García",   role:"worker", memberId:"w2", initials:"MG",color:"#7C3AED",bg:"#EDE9FE"},
 };
@@ -511,57 +512,57 @@ function WorkerView({user, shows, onLogout}){
   const grouped=groupM(myShows);
   const todayShows=myShows.filter(s=>isToday(s.date));
   const upcoming=myShows.filter(s=>!isPast(s.date));
-  return React.createElement("div",{style:{display:"flex",flexDirection:"column",height:"100dvh",background:"#f8f9fa",width:"100%"}},
+  return React.createElement("div",{style:{display:"flex",flexDirection:"column",height:"100dvh",background:"#0a0a0a",width:"100%"}},
     React.createElement("div",{style:{background:"#111",padding:"13px 16px",display:"flex",alignItems:"center",gap:10,paddingTop:"max(13px,env(safe-area-inset-top))"}},
       React.createElement("div",{style:{width:34,height:34,borderRadius:"50%",background:user.bg,color:user.color,display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,fontWeight:700,flexShrink:0}},user.initials),
       React.createElement("div",{style:{flex:1}},
-        React.createElement("div",{style:{fontSize:14,fontWeight:700,color:"#fff"}},user.name),
-        React.createElement("div",{style:{fontSize:10,color:"#9ca3af"}},upcoming.length+" shows pendientes")
+        React.createElement("div",{style:{fontSize:16,fontWeight:700,color:"#fff",fontFamily:"Bebas Neue,system-ui,sans-serif",letterSpacing:2}},user.name),
+        React.createElement("div",{style:{fontSize:10,color:"#555555"}},upcoming.length+" shows pendientes")
       ),
       React.createElement("button",{onClick:onLogout,style:{background:"#333",border:"none",borderRadius:8,color:"#ccc",fontSize:12,padding:"6px 11px",cursor:"pointer"}},"Salir")
     ),
-    todayShows.length>0&&React.createElement("div",{style:{background:"#fef2f2",border:"2px solid #E24B4A",margin:"12px 14px 0",borderRadius:12,padding:"10px 14px"}},
-      React.createElement("div",{style:{fontSize:11,fontWeight:700,color:"#E24B4A",marginBottom:6}},"🔴 HOY TIENES SHOW"),
+    todayShows.length>0&&React.createElement("div",{style:{background:"#fef2f2",border:"2px solid #E03A38",margin:"12px 14px 0",borderRadius:12,padding:"10px 14px"}},
+      React.createElement("div",{style:{fontSize:11,fontWeight:700,color:"#E03A38",marginBottom:6}},"🔴 HOY TIENES SHOW"),
       todayShows.map(s=>{
         const a=ARTISTS[s.artist];
         return React.createElement("div",{key:s.id},
           React.createElement("span",{style:{background:a.bg,color:a.color,borderRadius:5,padding:"1px 6px",fontSize:10,fontWeight:700,marginRight:6}},a.name),
           React.createElement("span",{style:{fontSize:13,fontWeight:700}},s.venue+" · "+s.city),
-          s.notes&&React.createElement("div",{style:{fontSize:11,color:"#6b7280",marginTop:2}},"📝 "+s.notes)
+          s.notes&&React.createElement("div",{style:{fontSize:11,color:"#666666",marginTop:2}},"📝 "+s.notes)
         );
       })
     ),
     React.createElement("div",{style:{flex:1,overflow:"auto",padding:"12px 14px 40px"}},
       Object.keys(grouped).sort().map(month=>
         React.createElement("div",{key:month,style:{marginBottom:18}},
-          React.createElement("div",{style:{fontSize:10,fontWeight:700,color:"#9ca3af",textTransform:"uppercase",letterSpacing:1.5,marginBottom:9,display:"flex",alignItems:"center",gap:7}},
+          React.createElement("div",{style:{fontSize:10,fontWeight:700,color:"#555555",textTransform:"uppercase",letterSpacing:1.5,marginBottom:9,display:"flex",alignItems:"center",gap:7}},
             React.createElement("span",null,monthName(month)),
-            React.createElement("span",{style:{background:"#e5e7eb",color:"#6b7280",borderRadius:20,padding:"1px 7px",fontSize:10}},grouped[month].length)
+            React.createElement("span",{style:{background:"#e5e7eb",color:"#666666",borderRadius:20,padding:"1px 7px",fontSize:10}},grouped[month].length)
           ),
           grouped[month].map(s=>{
             const a=ARTISTS[s.artist];const today=isToday(s.date);const past=isPast(s.date);
-            return React.createElement("div",{key:s.id,style:{background:today?"#fff8f8":"#fff",borderRadius:12,padding:"12px 14px",marginBottom:8,border:today?"2px solid #E24B4A":"1.5px solid #f3f4f6",opacity:past?0.6:1}},
+            return React.createElement("div",{key:s.id,style:{background:today?"#fff8f8":"#fff",borderRadius:12,padding:"12px 14px",marginBottom:8,border:today?"2px solid #E03A38":"1.5px solid #f3f4f6",opacity:past?0.6:1}},
               React.createElement("div",{style:{display:"flex",alignItems:"flex-start",gap:10}},
                 React.createElement("div",{style:{textAlign:"center",minWidth:34}},
-                  React.createElement("div",{style:{fontSize:17,fontWeight:800,color:today?"#E24B4A":"#111",lineHeight:1}},new Date(s.date+"T12:00:00").getDate()),
-                  React.createElement("div",{style:{fontSize:9,color:"#9ca3af",textTransform:"uppercase"}},new Date(s.date+"T12:00:00").toLocaleDateString("es-ES",{month:"short"}))
+                  React.createElement("div",{style:{fontSize:17,fontWeight:800,color:today?"#E03A38":"#111",lineHeight:1}},new Date(s.date+"T12:00:00").getDate()),
+                  React.createElement("div",{style:{fontSize:9,color:"#555555",textTransform:"uppercase"}},new Date(s.date+"T12:00:00").toLocaleDateString("es-ES",{month:"short"}))
                 ),
                 React.createElement("div",{style:{flex:1}},
                   React.createElement("div",{style:{display:"flex",alignItems:"center",gap:5,marginBottom:4}},
                     React.createElement("span",{style:{background:a.bg,color:a.color,borderRadius:5,padding:"1px 7px",fontSize:10,fontWeight:700}},a.name),
-                    today&&React.createElement("span",{style:{background:"#E24B4A",color:"#fff",borderRadius:5,padding:"1px 6px",fontSize:10,fontWeight:700}},"HOY")
+                    today&&React.createElement("span",{style:{background:"#E03A38",color:"#fff",borderRadius:5,padding:"1px 6px",fontSize:10,fontWeight:700}},"HOY")
                   ),
                   React.createElement("div",{style:{fontSize:14,fontWeight:700,marginBottom:3}},s.venue),
-                  React.createElement("div",{style:{fontSize:12,color:"#6b7280",marginBottom:6}},"📍 "+s.city),
+                  React.createElement("div",{style:{fontSize:12,color:"#666666",marginBottom:6}},"📍 "+s.city),
                   (s.llegada||s.soundcheck||s.showtime)&&React.createElement("div",{style:{display:"flex",gap:8,flexWrap:"wrap",marginBottom:6}},
                     s.llegada&&React.createElement("div",{style:{background:"#E6F1FB",color:"#185FA5",borderRadius:7,padding:"3px 8px",fontSize:11,fontWeight:600}},"🚗 Llegada "+s.llegada),
                     s.soundcheck&&React.createElement("div",{style:{background:"#FAEEDA",color:"#854F0B",borderRadius:7,padding:"3px 8px",fontSize:11,fontWeight:600}},"🎛 SC "+s.soundcheck),
-                    s.showtime&&React.createElement("div",{style:{background:"#FCEBEB",color:"#A32D2D",borderRadius:7,padding:"3px 8px",fontSize:11,fontWeight:600}},"🔴 Show "+s.showtime)
+                    s.showtime&&React.createElement("div",{style:{background:"#1a0a0a",color:"#A32D2D",borderRadius:7,padding:"3px 8px",fontSize:11,fontWeight:600}},"🔴 Show "+s.showtime)
                   ),
-                  s.contacto&&React.createElement("div",{style:{fontSize:11,color:"#6b7280",marginBottom:4}},"📞 "+s.contacto),
-                  s.notes&&React.createElement("div",{style:{marginTop:4,padding:"6px 9px",background:"#f9fafb",borderRadius:8,fontSize:11,color:"#374151",lineHeight:1.5}},"📝 "+s.notes),
+                  s.contacto&&React.createElement("div",{style:{fontSize:11,color:"#666666",marginBottom:4}},"📞 "+s.contacto),
+                  s.notes&&React.createElement("div",{style:{marginTop:4,padding:"6px 9px",background:"#f9fafb",borderRadius:8,fontSize:11,color:"#f0ebe4",lineHeight:1.5}},"📝 "+s.notes),
                   s.files&&s.files.length>0&&React.createElement("div",{style:{marginTop:6}},
-                    React.createElement("div",{style:{fontSize:10,fontWeight:700,color:"#9ca3af",textTransform:"uppercase",letterSpacing:1,marginBottom:5}},"Archivos"),
+                    React.createElement("div",{style:{fontSize:10,fontWeight:700,color:"#555555",textTransform:"uppercase",letterSpacing:1,marginBottom:5}},"Archivos"),
                     s.files.map((f,i)=>React.createElement("a",{key:i,href:f.data,download:f.name,style:{display:"flex",alignItems:"center",gap:7,padding:"6px 9px",background:"#E6F1FB",borderRadius:8,marginBottom:4,textDecoration:"none"}},
                       React.createElement("span",{style:{fontSize:14}},f.type&&f.type.includes("pdf")?"📄":"📎"),
                       React.createElement("span",{style:{fontSize:11,fontWeight:600,color:"#185FA5",flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},f.name),
@@ -575,7 +576,7 @@ function WorkerView({user, shows, onLogout}){
           })
         )
       ),
-      myShows.length===0&&React.createElement("div",{style:{textAlign:"center",padding:60,color:"#9ca3af"}},
+      myShows.length===0&&React.createElement("div",{style:{textAlign:"center",padding:60,color:"#555555"}},
         React.createElement("div",{style:{fontSize:36,marginBottom:10}},"📋"),
         React.createElement("div",{style:{fontSize:14,fontWeight:600}},"No tienes shows asignados")
       )
@@ -623,7 +624,7 @@ function LoginScreen({onLogin}){
   const dots=Array.from({length:maxLen},(_,i)=>
     React.createElement("div",{key:i,style:{
       width:13,height:13,borderRadius:"50%",
-      background:i<pin.length?(error?"#ef4444":"#E24B4A"):"#e5e7eb",
+      background:i<pin.length?(error?"#ef4444":"#E03A38"):"#2a2a2a",
       transition:"background .15s",
       transform:error?"scale(1.2)":"scale(1)"
     }})
@@ -631,8 +632,8 @@ function LoginScreen({onLogin}){
 
   const numBtn=(d)=>React.createElement("button",{
     onClick:()=>press(String(d)),
-    style:{width:74,height:74,borderRadius:"50%",border:"1.5px solid #e5e7eb",background:"#fff",
-      fontSize:22,fontWeight:600,color:"#111",cursor:"pointer",
+    style:{width:74,height:74,borderRadius:"50%",border:"1.5px solid #2a2a2a",background:"#1a1a1a",
+      fontSize:22,fontWeight:600,color:"#f0ebe4",cursor:"pointer",
       display:"flex",alignItems:"center",justifyContent:"center",
       boxShadow:"0 2px 8px rgba(0,0,0,.06)",WebkitTapHighlightColor:"transparent"}
   },d);
@@ -640,18 +641,23 @@ function LoginScreen({onLogin}){
   const delBtn=React.createElement("button",{
     onClick:del,
     style:{width:74,height:74,borderRadius:"50%",border:"none",background:"transparent",
-      fontSize:22,color:"#6b7280",cursor:"pointer",WebkitTapHighlightColor:"transparent"}
+      fontSize:22,color:"#666666",cursor:"pointer",WebkitTapHighlightColor:"transparent"}
   },"⌫");
 
   return React.createElement("div",{style:{
     display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",
-    height:"100dvh",width:"100%",background:"#f8f9fa",padding:24,userSelect:"none"
+    height:"100dvh",width:"100%",background:"#0a0a0a",padding:24,userSelect:"none"
   }},
-    React.createElement("div",{style:{width:64,height:64,borderRadius:16,background:"#E24B4A",
-      display:"flex",alignItems:"center",justifyContent:"center",fontSize:28,
-      marginBottom:20,boxShadow:"0 8px 24px rgba(226,75,74,.3)"}},"🎛"),
-    React.createElement("div",{style:{fontSize:22,fontWeight:700,color:"#111",marginBottom:4}},"TourDesk Pro"),
-    React.createElement("div",{style:{fontSize:13,color:"#6b7280",marginBottom:40}},"Introduce tu PIN"),
+    React.createElement("div",{style:{marginBottom:32,textAlign:"center"}},
+      React.createElement("div",{style:{display:"flex",flexDirection:"column",alignItems:"flex-start",display:"inline-flex",flexDirection:"column"}},
+        React.createElement("div",{style:{width:8,height:8,borderRadius:"50%",background:"#E03A38",marginBottom:10,boxShadow:"0 0 12px rgba(224,58,56,.5)"}}),
+        React.createElement("div",{style:{fontFamily:"Bebas Neue,sans-serif",fontSize:52,lineHeight:.82,letterSpacing:4,color:"#f0ebe4"}},"OFF"),
+        React.createElement("div",{style:{fontFamily:"Bebas Neue,sans-serif",fontSize:52,lineHeight:.82,letterSpacing:4,WebkitTextStroke:"1.5px rgba(240,235,228,.2)",color:"transparent"}},"STAGE"),
+        React.createElement("div",{style:{width:32,height:1,background:"linear-gradient(to right,#E03A38,transparent)",margin:"10px 0 6px"}}),
+        React.createElement("div",{style:{fontSize:7,letterSpacing:3,textTransform:"uppercase",color:"rgba(240,235,228,.25)",fontFamily:"DM Sans,sans-serif"}},"Tour Production · Worldwide")
+      )
+    ),
+    React.createElement("div",{style:{fontSize:9,color:"#E03A38",marginBottom:40,letterSpacing:3,textTransform:"uppercase",fontFamily:"DM Sans,sans-serif"}},"Introduce tu PIN"),
     React.createElement("div",{style:{display:"flex",gap:16,marginBottom:12}},dots),
     React.createElement("div",{style:{fontSize:12,color:"#ef4444",fontWeight:600,height:20,marginBottom:24}},error?"PIN incorrecto":""),
     React.createElement("div",{style:{display:"grid",gridTemplateColumns:"repeat(3,74px)",gap:14}},
@@ -667,7 +673,7 @@ function LoginScreen({onLogin}){
 function AdminApp({user, onLogout}){
   const [dark,setDark]=React.useState(()=>localStorage.getItem("td_dark")==="1");
   React.useEffect(()=>{
-    document.body.style.background=dark?"#0d0d0d":"#f8f9fa";
+    document.body.style.background=dark?"#050505":"#111111";
     localStorage.setItem("td_dark",dark?"1":"0");
   },[dark]);
   const [shows,setShows]=React.useState(ALL_SHOWS);
@@ -682,19 +688,19 @@ function AdminApp({user, onLogout}){
   const confDays=[...new Set(shows.filter(s=>conflicts.has(s.id)).map(s=>s.date))].length;
   const TABS=[{id:"shows",l:"📋"},{id:"conflicts",l:"⚡"+confDays},{id:"marketing",l:"📣"},{id:"office",l:"🏢"},{id:"stats",l:"📊"}];
   const hdr="#111"; const tbar=dark?"#111":"#fff"; const tbdr=dark?"#2a2a2a":"#f3f4f6";
-  return React.createElement("div",{style:{display:"flex",flexDirection:"column",height:"100dvh",width:"100%",background:dark?"#0d0d0d":"#f8f9fa"}},
+  return React.createElement("div",{style:{display:"flex",flexDirection:"column",height:"100dvh",width:"100%",background:dark?"#050505":"#0d0d0d"}},
     React.createElement("div",{style:{background:hdr,padding:"12px 15px",display:"flex",alignItems:"center",gap:10,paddingTop:"max(12px,env(safe-area-inset-top))"}},
-      React.createElement("div",{style:{width:33,height:33,borderRadius:9,background:"#E24B4A",display:"flex",alignItems:"center",justifyContent:"center",fontSize:15}},"🎛"),
+      React.createElement("div",{style:{width:36,height:36,borderRadius:0,background:"#E03A38",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontFamily:"Bebas Neue,sans-serif",letterSpacing:2,color:"#fff",fontWeight:400}},"OS"),
       React.createElement("div",{style:{flex:1}},
-        React.createElement("div",{style:{fontSize:14,fontWeight:700,color:"#fff"}},"TourDesk Pro"),
-        React.createElement("div",{style:{fontSize:10,color:"#9ca3af"}},shows.length+" shows · Luar La L · Beele · Hades 66")
+        React.createElement("div",{style:{fontSize:14,fontWeight:700,color:"#fff",fontFamily:"Bebas Neue,system-ui,sans-serif",letterSpacing:2}},"TourDesk Pro"),
+        React.createElement("div",{style:{fontSize:8,color:"#E03A38",letterSpacing:2,textTransform:"uppercase",fontFamily:"DM Sans,sans-serif"}},"OFFSTAGE · "+shows.length+" SHOWS")
       ),
       React.createElement("button",{onClick:()=>setDark(d=>!d),style:{background:"none",border:"none",cursor:"pointer",fontSize:16,padding:"3px 6px"}},dark?"☀️":"🌙"),
       React.createElement("button",{onClick:onLogout,style:{background:"#2a2a2a",border:"none",borderRadius:8,color:"#aaa",fontSize:11,padding:"5px 9px",cursor:"pointer"}},"Salir"),
-      todayMktg.length>0&&React.createElement("div",{onClick:()=>setTab("marketing"),style:{background:"#E24B4A",borderRadius:20,padding:"3px 9px",fontSize:10,fontWeight:700,color:"#fff",cursor:"pointer"}},todayMktg.length+" HOY")
+      todayMktg.length>0&&React.createElement("div",{onClick:()=>setTab("marketing"),style:{background:"#E03A38",borderRadius:20,padding:"3px 9px",fontSize:10,fontWeight:700,color:"#fff",cursor:"pointer"}},todayMktg.length+" HOY")
     ),
-    React.createElement("div",{style:{background:tbar,borderBottom:"1.5px solid "+tbdr,display:"flex",flexShrink:0}},
-      TABS.map(t=>React.createElement("button",{key:t.id,onClick:()=>setTab(t.id),style:{flex:1,padding:"11px 2px",border:"none",background:"transparent",fontSize:13,fontWeight:700,cursor:"pointer",color:tab===t.id?"#E24B4A":dark?"#555":"#9ca3af",borderBottom:tab===t.id?"2.5px solid #E24B4A":"2.5px solid transparent"}},t.l))
+    React.createElement("div",{style:{background:"#0f0f0f",borderBottom:"1px solid #1e1e1e",display:"flex",flexShrink:0}},
+      TABS.map(t=>React.createElement("button",{key:t.id,onClick:()=>setTab(t.id),style:{flex:1,padding:"11px 2px",border:"none",background:"transparent",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"DM Sans,sans-serif",letterSpacing:.5,color:tab===t.id?"#E03A38":"#555555",borderBottom:tab===t.id?"2.5px solid #E03A38":"2.5px solid transparent"}},t.l))
     ),
     tab==="shows"&&React.createElement(ShowsPanel,{shows,setShows,conflicts}),
     tab==="conflicts"&&React.createElement(ConflictsPanel,{shows,conflicts,setShows}),
