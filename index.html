@@ -35,6 +35,21 @@ const ARTISTS={
   beele:{name:"Beele",    color:"#0F6E56",bg:"#E1F5EE",short:"BE"},
   hades:{name:"Hades 66", color:"#7C3AED",bg:"#EDE9FE",short:"H6"},
 };
+
+// ── RATES — tarifas por show y pagos al equipo ─────────────────
+const SHOW_RATES={
+  luar:  {fee:300, rental:0,   label:"Show Luar La L"},
+  beele: {fee:500, rental:100, label:"Show Beele"},
+  hades: {fee:350, rental:0,   label:"Show Hades 66"},
+};
+const CREW_RATES={
+  w1: 200, // Andrés Hernández
+  w2: 250, // Miguel García
+};
+const rateTotal=artist=>{
+  const r=SHOW_RATES[artist];
+  return r?r.fee+r.rental:0;
+};
 const ALL_SHOWS=[
   {id:1, date:"2026-06-23",artist:"luar", venue:"Beach Club Medusa",city:"Cullera",status:"confirmed",assigned:["yo"],notes:""},
   {id:2, date:"2026-06-25",artist:"luar", venue:"Shoko",city:"Barcelona",status:"confirmed",assigned:["yo"],notes:""},
@@ -86,6 +101,49 @@ const ALL_SHOWS=[
   {id:48,date:"2026-07-24",artist:"hades",venue:"El Ruedo",city:"Roquetas del Mar",status:"confirmed",assigned:["w2"],notes:""},
   {id:49,date:"2026-07-25",artist:"hades",venue:"Puro Latino",city:"Puerto de Santa María",status:"confirmed",assigned:["w2"],notes:""},
 ];
+
+// ── MATERIAL / INVENTORY ──────────────────────────────────────
+const INITIAL_CASES=[
+  {id:1,name:"Maleta FOH Luar La L",type:"Pelican 1637",assignedTo:"yo",items:[
+    {id:1,name:"Digigrid IOX",qty:1},
+    {id:2,name:"Servidor Waves ONE",qty:1},
+    {id:3,name:"Switch Netgear",qty:1},
+    {id:4,name:"Ordenador Dell Host",qty:1},
+    {id:5,name:"Pantalla táctil 15\"",qty:1},
+    {id:6,name:"Rack SA LV1",qty:1},
+  ]},
+  {id:2,name:"Maleta Stage",type:"SKB 4U",assignedTo:"yo",items:[
+    {id:1,name:"Digigrid IOX",qty:2},
+  ]},
+  {id:3,name:"Maleta FOH Beele",type:"Pelican 1607",assignedTo:null,items:[
+    {id:1,name:"Crest Tactus FOH",qty:1},
+    {id:2,name:"Ordenador Dell",qty:1},
+    {id:3,name:"Pantalla 15\"",qty:1},
+    {id:4,name:"Switch Netgear",qty:1},
+    {id:5,name:"Rack SA LV1",qty:1},
+  ]},
+  {id:4,name:"Maleta Monitores Beele",type:"Pelican 1607",assignedTo:null,items:[
+    {id:1,name:"Crest Tactus FOH",qty:1},
+    {id:2,name:"Ordenador Dell",qty:1},
+    {id:3,name:"Pantalla 15\"",qty:1},
+    {id:4,name:"Switch Netgear",qty:1},
+    {id:5,name:"Rack SA LV1",qty:1},
+  ]},
+  {id:5,name:"Maleta Stage",type:"Fly Pro",assignedTo:null,items:[
+    {id:1,name:"Crest Tactus Stage 32x16",qty:1},
+  ]},
+  {id:6,name:"Rack Proel",type:"4U",assignedTo:null,items:[
+    {id:1,name:"Crest Tactus Stage 32x16",qty:1},
+    {id:2,name:"Ordenador Dell",qty:1},
+    {id:3,name:"Servidor Waves",qty:1},
+    {id:4,name:"Switch Netgear",qty:1},
+    {id:5,name:"Pantalla 15\" táctil",qty:1},
+  ]},
+];
+
+// ── FINANCES ───────────────────────────────────────────────────
+const INITIAL_FINANCES=[];
+
 const MKTG=[
   {id:"m1",date:"2026-06-23",artist:"luar",city:"Cullera",venue:"Beach Club Medusa",type:"reel",time:"Antes del soundcheck",caption:"Arrancamos 🔴\nEuro Tour 2026 🌍\n@luar_lal",ht:"#soundengineer #tourlife #luarlal #fohEngineer",tip:"Setup de consola, 20 segundos.",priority:false},
   {id:"m2",date:"2026-07-02",artist:"beele",city:"Ibiza",venue:"Pacha Disco Club",type:"reel",time:"Durante el show",caption:"Pacha Ibiza 🎛🏝\n@beele — la isla nos recibe\nEuro Tour 2026 🌍\n💬 Bookings DM",ht:"#ibiza #pacha #beele #soundengineer #fohEngineer",tip:"Pacha es reconocido mundialmente.",priority:false},
@@ -483,6 +541,374 @@ function OfficePanel(){
   );
 }
 
+
+// ── MATERIAL PANEL ────────────────────────────────────────────
+function MaterialPanel({cases,setCases}){
+  const [expanded,setExpanded]=React.useState(null);
+  const [editing,setEditing]=React.useState(null);
+  const [fp,setFp]=React.useState("all");
+  const totalItems=cases.reduce((s,c)=>s+c.items.reduce((a,i)=>a+i.qty,0),0);
+  const filteredCases=cases.filter(c=>fp==="all"||(fp==="none"?!c.assignedTo:c.assignedTo===fp));
+
+  const pill=(label,active,onClick,color,bg)=>React.createElement("button",{onClick,style:{padding:"5px 12px",borderRadius:20,border:active?"2px solid "+color:"1px solid #2a2a2a",background:active?bg:"#1a1a1a",color:active?color:"#888888",fontWeight:600,fontSize:11,cursor:"pointer",whiteSpace:"nowrap"}},label);
+
+  return React.createElement("div",{style:{flex:1,overflow:"auto",padding:"14px 14px 80px",background:"#0a0a0a"}},
+
+    React.createElement("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:9,marginBottom:13}},
+      React.createElement("div",{style:{background:"#111111",borderRadius:11,padding:13,border:"1px solid #1e1e1e"}},
+        React.createElement("div",{style:{fontSize:11,color:"#555555",fontWeight:600,marginBottom:4}},"Maletas"),
+        React.createElement("div",{style:{fontSize:24,fontWeight:800,color:"#E03A38"}},cases.length)
+      ),
+      React.createElement("div",{style:{background:"#111111",borderRadius:11,padding:13,border:"1px solid #1e1e1e"}},
+        React.createElement("div",{style:{fontSize:11,color:"#555555",fontWeight:600,marginBottom:4}},"Items totales"),
+        React.createElement("div",{style:{fontSize:24,fontWeight:800,color:"#f0ebe4"}},totalItems)
+      )
+    ),
+
+    React.createElement("button",{onClick:()=>setEditing({id:0,name:"",type:"",assignedTo:null,items:[]}),style:{width:"100%",padding:"11px",borderRadius:10,border:"1px solid #2a1414",background:"#1a0808",color:"#E03A38",fontWeight:700,fontSize:13,cursor:"pointer",marginBottom:13,fontFamily:"DM Sans,sans-serif",letterSpacing:.5}},"+ Nueva Maleta"),
+
+    React.createElement("div",{style:{display:"flex",gap:6,flexWrap:"wrap",marginBottom:13}},
+      pill("Todos",fp==="all",()=>setFp("all"),"#fff","#1a1a1a"),
+      TEAM.map(m=>pill(m.initials,fp===m.id,()=>setFp(fp===m.id?"all":m.id),m.color,m.bg)),
+      pill("Sin asignar",fp==="none",()=>setFp(fp==="none"?"all":"none"),"#888","#1a1a1a")
+    ),
+
+    filteredCases.map(c=>{
+      const isOpen=expanded===c.id;
+      const itemCount=c.items.reduce((a,i)=>a+i.qty,0);
+      return React.createElement("div",{key:c.id,style:{background:"#111111",borderRadius:12,marginBottom:9,border:"1px solid #1e1e1e",overflow:"hidden"}},
+        React.createElement("div",{onClick:()=>setExpanded(isOpen?null:c.id),style:{padding:"13px 14px",display:"flex",alignItems:"center",justifyContent:"space-between",cursor:"pointer"}},
+          React.createElement("div",{style:{flex:1}},
+            React.createElement("div",{style:{fontSize:14,fontWeight:700,color:"#f0ebe4",marginBottom:3}},c.name),
+            React.createElement("div",{style:{fontSize:11,color:"#555555"}},c.type+" · "+itemCount+" items")
+          ),
+          React.createElement("div",{style:{display:"flex",alignItems:"center",gap:10}},
+            c.assignedTo?React.createElement(Av,{m:TEAM.find(m=>m.id===c.assignedTo),sz:26}):React.createElement("span",{style:{fontSize:10,color:"#444",border:"1px dashed #2a2a2a",borderRadius:6,padding:"3px 8px"}},"Sin asignar"),
+            React.createElement("span",{onClick:e=>{e.stopPropagation();setEditing(c);},style:{fontSize:14,color:"#666",padding:4}},"✏️"),
+            React.createElement("span",{style:{fontSize:14,color:"#555",transform:isOpen?"rotate(180deg)":"none",transition:"transform .2s",display:"inline-block"}},"⌄")
+          )
+        ),
+        isOpen&&React.createElement("div",{style:{padding:"0 14px 13px",borderTop:"1px solid #1a1a1a"}},
+          c.items.map(it=>React.createElement("div",{key:it.id,style:{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"8px 0",borderBottom:"1px solid #161616"}},
+            React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8}},
+              React.createElement("span",{style:{width:5,height:5,borderRadius:"50%",background:"#E03A38",flexShrink:0}}),
+              React.createElement("span",{style:{fontSize:13,color:"#ccc"}},it.name)
+            ),
+            React.createElement("span",{style:{fontSize:12,fontWeight:700,color:"#888",background:"#1a1a1a",borderRadius:6,padding:"2px 9px"}},"x"+it.qty)
+          )),
+          c.items.length===0&&React.createElement("div",{style:{padding:"12px 0",fontSize:12,color:"#444",textAlign:"center"}},"Sin items")
+        )
+      );
+    }),
+
+    filteredCases.length===0&&React.createElement("div",{style:{textAlign:"center",padding:60,color:"#555"}},
+      React.createElement("div",{style:{fontSize:36,marginBottom:10}},"📦"),
+      React.createElement("div",{style:{fontSize:14,fontWeight:600,color:"#f0ebe4"}},cases.length===0?"Sin maletas registradas":"Sin maletas para este filtro")
+    ),
+
+    editing&&React.createElement(CaseModal,{
+      caseData:editing,
+      onClose:()=>setEditing(null),
+      onSave:c=>{
+        setCases(p=>{
+          const exists=p.some(x=>x.id===c.id);
+          return exists?p.map(x=>x.id===c.id?c:x):[...p,{...c,id:Date.now()}];
+        });
+        setEditing(null);
+      },
+      onDelete:id=>{
+        setCases(p=>p.filter(x=>x.id!==id));
+        setEditing(null);
+        setExpanded(null);
+      }
+    })
+  );
+}
+
+// ── CASE EDIT MODAL ───────────────────────────────────────────
+function CaseModal({caseData,onClose,onSave,onDelete}){
+  const isNew=!caseData.id;
+  const [name,setName]=React.useState(caseData.name||"");
+  const [type,setType]=React.useState(caseData.type||"");
+  const [assignedTo,setAssignedTo]=React.useState(caseData.assignedTo||null);
+  const [items,setItems]=React.useState(caseData.items?[...caseData.items]:[]);
+  const [newItemName,setNewItemName]=React.useState("");
+  const [newItemQty,setNewItemQty]=React.useState("1");
+
+  const addItem=()=>{
+    if(!newItemName.trim())return;
+    setItems(p=>[...p,{id:Date.now(),name:newItemName.trim(),qty:parseInt(newItemQty)||1}]);
+    setNewItemName("");
+    setNewItemQty("1");
+  };
+  const removeItem=id=>setItems(p=>p.filter(i=>i.id!==id));
+  const updateQty=(id,delta)=>setItems(p=>p.map(i=>i.id===id?{...i,qty:Math.max(1,i.qty+delta)}:i));
+
+  const label=(txt)=>React.createElement("div",{style:{fontSize:10,fontWeight:700,color:"#555555",textTransform:"uppercase",letterSpacing:1,margin:"12px 0 7px"}},txt);
+  const inputStyle={width:"100%",padding:"9px 10px",borderRadius:8,border:"1px solid #2a2a2a",background:"#1a1a1a",color:"#f0ebe4",fontSize:13,fontFamily:"DM Sans,sans-serif"};
+
+  return React.createElement("div",{onClick:onClose,style:{position:"fixed",inset:0,background:"rgba(0,0,0,.85)",zIndex:200,display:"flex",alignItems:"flex-end"}},
+    React.createElement("div",{onClick:e=>e.stopPropagation(),style:{background:"#111111",borderRadius:"20px 20px 0 0",padding:"18px 16px 44px",width:"100%",maxHeight:"92vh",overflow:"auto"}},
+      React.createElement("div",{style:{width:38,height:4,background:"#2a2a2a",borderRadius:2,margin:"0 auto 14px"}}),
+
+      isNew&&React.createElement("div",{style:{fontSize:9,letterSpacing:2,textTransform:"uppercase",color:"#E03A38",marginBottom:14}},"Nueva Maleta"),
+
+      label("Nombre"),
+      React.createElement("input",{type:"text",value:name,onChange:e=>setName(e.target.value),placeholder:"Ej. Maleta FOH Luar La L",style:{...inputStyle,marginBottom:10}}),
+
+      label("Tipo / Modelo"),
+      React.createElement("input",{type:"text",value:type,onChange:e=>setType(e.target.value),placeholder:"Ej. Pelican 1637",style:{...inputStyle,marginBottom:14}}),
+
+      label("Asignar a"),
+      React.createElement("div",{style:{display:"flex",gap:7,marginBottom:14,flexWrap:"wrap"}},
+        React.createElement("div",{onClick:()=>setAssignedTo(null),style:{flex:"1 1 auto",minWidth:70,textAlign:"center",padding:"8px 6px",borderRadius:8,cursor:"pointer",border:!assignedTo?"2px solid #888":"1px solid #2a2a2a",background:!assignedTo?"#1a1a1a":"#1a1a1a",color:!assignedTo?"#f0ebe4":"#888888",fontWeight:600,fontSize:11}},"Sin asignar"),
+        TEAM.map(m=>
+          React.createElement("div",{key:m.id,onClick:()=>setAssignedTo(m.id),style:{flex:"1 1 auto",minWidth:70,display:"flex",alignItems:"center",justifyContent:"center",gap:6,padding:"8px 10px",borderRadius:8,cursor:"pointer",border:assignedTo===m.id?"2px solid "+m.color:"1px solid #2a2a2a",background:assignedTo===m.id?m.bg:"#1a1a1a",color:assignedTo===m.id?m.color:"#888888",fontWeight:600,fontSize:12}},
+            React.createElement(Av,{m,sz:20}),
+            React.createElement("span",null,m.initials)
+          )
+        )
+      ),
+
+      label("Contenido"),
+      items.map(it=>React.createElement("div",{key:it.id,style:{display:"flex",alignItems:"center",gap:8,padding:"7px 10px",background:"#1a1a1a",borderRadius:8,marginBottom:6,border:"1px solid #2a2a2a"}},
+        React.createElement("span",{style:{fontSize:13,color:"#f0ebe4",flex:1}},it.name),
+        React.createElement("button",{onClick:()=>updateQty(it.id,-1),style:{width:24,height:24,borderRadius:6,border:"1px solid #2a2a2a",background:"#0d0d0d",color:"#888",fontSize:13,cursor:"pointer"}},"−"),
+        React.createElement("span",{style:{fontSize:13,fontWeight:700,color:"#f0ebe4",minWidth:20,textAlign:"center"}},it.qty),
+        React.createElement("button",{onClick:()=>updateQty(it.id,1),style:{width:24,height:24,borderRadius:6,border:"1px solid #2a2a2a",background:"#0d0d0d",color:"#888",fontSize:13,cursor:"pointer"}},"+"),
+        React.createElement("button",{onClick:()=>removeItem(it.id),style:{width:24,height:24,borderRadius:6,border:"1px solid #4a1414",background:"#1a0808",color:"#E03A38",fontSize:12,cursor:"pointer"}},"✕")
+      )),
+
+      React.createElement("div",{style:{display:"flex",gap:6,marginTop:8,marginBottom:14}},
+        React.createElement("input",{type:"text",value:newItemName,onChange:e=>setNewItemName(e.target.value),placeholder:"Añadir item...",style:{...inputStyle,flex:1}}),
+        React.createElement("input",{type:"number",min:1,value:newItemQty,onChange:e=>setNewItemQty(e.target.value),style:{...inputStyle,width:54,textAlign:"center"}}),
+        React.createElement("button",{onClick:addItem,style:{padding:"0 16px",borderRadius:8,border:"none",background:"#E03A38",color:"#fff",fontWeight:700,fontSize:18,cursor:"pointer"}},"+")
+      ),
+
+      !name.trim()&&React.createElement("div",{style:{fontSize:11,color:"#E03A38",marginBottom:10,textAlign:"center"}},"Falta el nombre de la maleta"),
+
+      React.createElement("div",{style:{display:"flex",gap:8}},
+        React.createElement("button",{onClick:onClose,style:{flex:1,padding:"10px",borderRadius:10,border:"1px solid #2a2a2a",background:"#1a1a1a",color:"#f0ebe4",fontWeight:600,fontSize:13,cursor:"pointer"}},"Cancelar"),
+        !isNew&&onDelete&&React.createElement("button",{onClick:()=>{if(window.confirm("¿Eliminar esta maleta?")){onDelete(caseData.id);}},style:{padding:"10px 16px",borderRadius:10,border:"1px solid #4a1414",background:"#1a0808",color:"#E03A38",fontWeight:600,fontSize:13,cursor:"pointer"}},"🗑"),
+        React.createElement("button",{disabled:!name.trim(),onClick:()=>onSave({...caseData,name:name.trim(),type:type.trim(),assignedTo,items}),style:{flex:2,padding:"10px",borderRadius:10,border:"none",background:!name.trim()?"#3a1414":"#E03A38",color:"#fff",fontWeight:700,fontSize:13,cursor:!name.trim()?"default":"pointer",opacity:!name.trim()?.5:1}},isNew?"Crear Maleta":"Guardar")
+      )
+    )
+  );
+}
+
+// ── FINANCE PANEL ─────────────────────────────────────────────
+function FinancePanel({finances,setFinances,shows}){
+  const [editing,setEditing]=React.useState(null);
+  const [filter,setFilter]=React.useState("all");
+
+  const income=finances.filter(f=>f.type==="income");
+  const expense=finances.filter(f=>f.type==="expense");
+  const totalIncome=income.reduce((s,f)=>s+f.amount,0);
+  const totalExpense=expense.reduce((s,f)=>s+f.amount,0);
+  const net=totalIncome-totalExpense;
+
+  const filtered=finances.filter(f=>filter==="all"||f.type===filter)
+    .sort((a,b)=>b.date.localeCompare(a.date));
+
+  const fmtMoney=n=>n.toLocaleString("es-ES",{minimumFractionDigits:0,maximumFractionDigits:0})+"€";
+  const fmtDate=d=>{
+    const dt=new Date(d+"T12:00:00");
+    return dt.toLocaleDateString("es-ES",{day:"2-digit",month:"short"});
+  };
+
+  const pill=(label,active,onClick,color,bg)=>React.createElement("button",{onClick,style:{padding:"5px 12px",borderRadius:20,border:active?"2px solid "+color:"1px solid #2a2a2a",background:active?bg:"#1a1a1a",color:active?color:"#888888",fontWeight:600,fontSize:11,cursor:"pointer",whiteSpace:"nowrap"}},label);
+
+  return React.createElement("div",{style:{flex:1,overflow:"auto",padding:"14px 14px 80px",background:"#0a0a0a"}},
+
+    // Summary cards
+    React.createElement("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:9,marginBottom:9}},
+      React.createElement("div",{style:{background:"#111111",borderRadius:11,padding:13,border:"1px solid #1e1e1e"}},
+        React.createElement("div",{style:{fontSize:11,color:"#555555",fontWeight:600,marginBottom:4}},"Ingresos"),
+        React.createElement("div",{style:{fontSize:22,fontWeight:800,color:"#16a34a"}},fmtMoney(totalIncome))
+      ),
+      React.createElement("div",{style:{background:"#111111",borderRadius:11,padding:13,border:"1px solid #1e1e1e"}},
+        React.createElement("div",{style:{fontSize:11,color:"#555555",fontWeight:600,marginBottom:4}},"Invertido"),
+        React.createElement("div",{style:{fontSize:22,fontWeight:800,color:"#E03A38"}},fmtMoney(totalExpense))
+      )
+    ),
+    React.createElement("div",{style:{background:net>=0?"#0a1a0a":"#1a0a0a",borderRadius:11,padding:13,border:"1px solid "+(net>=0?"#1a3a1a":"#3a1a1a"),marginBottom:13,display:"flex",alignItems:"center",justifyContent:"space-between"}},
+      React.createElement("div",{style:{fontSize:11,color:"#888",fontWeight:600}},"Balance neto"),
+      React.createElement("div",{style:{fontSize:24,fontWeight:800,color:net>=0?"#16a34a":"#ef4444"}},(net>=0?"+":"")+fmtMoney(net))
+    ),
+
+    // Quick log from shows
+    React.createElement(QuickLogShows,{shows,finances,setFinances}),
+
+    // New entry button
+    React.createElement("div",{style:{display:"flex",gap:8,marginBottom:13}},
+      React.createElement("button",{onClick:()=>setEditing({id:0,type:"income",date:new Date().toISOString().slice(0,10),concept:"",amount:"",artist:""}),style:{flex:1,padding:"11px",borderRadius:10,border:"1px solid #1a3a1a",background:"#0a1a0a",color:"#16a34a",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"DM Sans,sans-serif"}},"+ Ingreso"),
+      React.createElement("button",{onClick:()=>setEditing({id:0,type:"expense",date:new Date().toISOString().slice(0,10),concept:"",amount:"",artist:""}),style:{flex:1,padding:"11px",borderRadius:10,border:"1px solid #2a1414",background:"#1a0808",color:"#E03A38",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"DM Sans,sans-serif"}},"+ Gasto")
+    ),
+
+    // Filters
+    React.createElement("div",{style:{display:"flex",gap:6,flexWrap:"wrap",marginBottom:11}},
+      pill("Todos",filter==="all",()=>setFilter("all"),"#fff","#1a1a1a"),
+      pill("Ingresos",filter==="income",()=>setFilter("income"),"#16a34a","#0a1a0a"),
+      pill("Gastos",filter==="expense",()=>setFilter("expense"),"#E03A38","#1a0808")
+    ),
+
+    // List
+    filtered.map(f=>React.createElement("div",{key:f.id,onClick:()=>setEditing(f),style:{display:"flex",alignItems:"center",justifyContent:"space-between",background:"#111111",borderRadius:10,padding:"11px 14px",marginBottom:7,border:"1px solid #1e1e1e",cursor:"pointer"}},
+      React.createElement("div",{style:{flex:1,minWidth:0}},
+        React.createElement("div",{style:{fontSize:13,fontWeight:600,color:"#f0ebe4",marginBottom:2,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}},f.concept),
+        React.createElement("div",{style:{fontSize:11,color:"#555"}},fmtDate(f.date)+(f.artist?" · "+ARTISTS[f.artist].name:""))
+      ),
+      React.createElement("div",{style:{fontSize:15,fontWeight:800,color:f.type==="income"?"#16a34a":"#E03A38",flexShrink:0,marginLeft:10}},(f.type==="income"?"+":"−")+fmtMoney(f.amount))
+    )),
+
+    filtered.length===0&&React.createElement("div",{style:{textAlign:"center",padding:60,color:"#555"}},
+      React.createElement("div",{style:{fontSize:36,marginBottom:10}},"💰"),
+      React.createElement("div",{style:{fontSize:14,fontWeight:600,color:"#f0ebe4"}},"Sin registros")
+    ),
+
+    editing&&React.createElement(FinanceModal,{
+      entry:editing,
+      onClose:()=>setEditing(null),
+      onSave:f=>{
+        setFinances(p=>{
+          const exists=p.some(x=>x.id===f.id);
+          return exists?p.map(x=>x.id===f.id?f:x):[...p,{...f,id:Date.now()}];
+        });
+        setEditing(null);
+      },
+      onDelete:id=>{
+        setFinances(p=>p.filter(x=>x.id!==id));
+        setEditing(null);
+      }
+    })
+  );
+}
+
+
+// ── QUICK LOG FROM SHOWS ──────────────────────────────────────
+function QuickLogShows({shows,finances,setFinances}){
+  const [open,setOpen]=React.useState(false);
+  const today=new Date().toISOString().slice(0,10);
+
+  // Shows within ±14 days of today, sorted by date
+  const relevant=shows.filter(s=>{
+    const diff=(new Date(s.date+"T12:00:00")-new Date(today+"T12:00:00"))/(1000*60*60*24);
+    return diff>=-7&&diff<=21;
+  }).sort((a,b)=>a.date.localeCompare(b.date));
+
+  const fmtDate=d=>new Date(d+"T12:00:00").toLocaleDateString("es-ES",{day:"2-digit",month:"short"});
+
+  const alreadyLogged=(showId,kind)=>finances.some(f=>f.showId===showId&&f.kind===kind);
+
+  const logIncome=s=>{
+    const r=SHOW_RATES[s.artist];
+    if(!r)return;
+    const concept=r.label+" — "+s.city;
+    let amount=r.fee;
+    if(r.rental>0) amount+=r.rental;
+    setFinances(p=>[...p,{id:Date.now(),type:"income",date:s.date,concept,amount,artist:s.artist,showId:s.id,kind:"income"}]);
+  };
+
+  const logCrewPay=(s,memberId)=>{
+    const rate=CREW_RATES[memberId];
+    if(!rate)return;
+    const member=TEAM.find(m=>m.id===memberId);
+    const concept="Pago "+member.name+" — "+ARTISTS[s.artist].name+" "+s.city;
+    setFinances(p=>[...p,{id:Date.now()+Math.random(),type:"expense",date:s.date,concept,amount:rate,artist:s.artist,showId:s.id,kind:"crew_"+memberId}]);
+  };
+
+  if(relevant.length===0) return null;
+
+  return React.createElement("div",{style:{background:"#111111",borderRadius:11,padding:"11px 13px",marginBottom:13,border:"1px solid #1e1e1e"}},
+    React.createElement("div",{onClick:()=>setOpen(!open),style:{display:"flex",alignItems:"center",justifyContent:"space-between",cursor:"pointer"}},
+      React.createElement("div",{style:{fontSize:11,fontWeight:700,color:"#E03A38",letterSpacing:1,textTransform:"uppercase"}},"⚡ Registro rápido"),
+      React.createElement("span",{style:{fontSize:13,color:"#555",transform:open?"rotate(180deg)":"none",transition:"transform .2s",display:"inline-block"}},"⌄")
+    ),
+    open&&React.createElement("div",{style:{marginTop:11}},
+      relevant.map(s=>{
+        const r=SHOW_RATES[s.artist];
+        const incomeDone=alreadyLogged(s.id,"income");
+        const crewAssigned=s.assigned.filter(a=>a!=="yo"&&CREW_RATES[a]);
+        return React.createElement("div",{key:s.id,style:{padding:"9px 0",borderBottom:"1px solid #1a1a1a"}},
+          React.createElement("div",{style:{display:"flex",alignItems:"center",gap:7,marginBottom:7}},
+            React.createElement("span",{style:{fontSize:11,fontWeight:700,color:"#888",minWidth:42}},fmtDate(s.date)),
+            React.createElement("span",{style:{fontSize:11,background:ARTISTS[s.artist].bg,color:ARTISTS[s.artist].color,borderRadius:5,padding:"2px 7px",fontWeight:700}},ARTISTS[s.artist].short),
+            React.createElement("span",{style:{fontSize:12,color:"#ccc",flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},s.city)
+          ),
+          React.createElement("div",{style:{display:"flex",gap:6,flexWrap:"wrap"}},
+            r&&React.createElement("button",{disabled:incomeDone,onClick:()=>logIncome(s),style:{padding:"6px 11px",borderRadius:8,border:incomeDone?"1px solid #1a3a1a":"1px solid #1a3a1a",background:incomeDone?"#0d150d":"#0a1a0a",color:incomeDone?"#3a6a3a":"#16a34a",fontWeight:700,fontSize:11,cursor:incomeDone?"default":"pointer"}},
+              incomeDone?"✓ Ingreso registrado":"+ Ingreso ("+(r.fee+r.rental)+"€)"
+            ),
+            crewAssigned.map(memberId=>{
+              const member=TEAM.find(m=>m.id===memberId);
+              const done=alreadyLogged(s.id,"crew_"+memberId);
+              return React.createElement("button",{key:memberId,disabled:done,onClick:()=>logCrewPay(s,memberId),style:{padding:"6px 11px",borderRadius:8,border:done?"1px solid #2a1414":"1px solid #2a1414",background:done?"#150a0a":"#1a0808",color:done?"#5a2a2a":"#E03A38",fontWeight:700,fontSize:11,cursor:done?"default":"pointer"}},
+                done?"✓ "+member.initials+" pagado":"− Pago "+member.initials+" ("+CREW_RATES[memberId]+"€)"
+              );
+            })
+          )
+        );
+      })
+    )
+  );
+}
+
+// ── FINANCE EDIT MODAL ────────────────────────────────────────
+function FinanceModal({entry,onClose,onSave,onDelete}){
+  const isNew=!entry.id;
+  const [type,setType]=React.useState(entry.type||"income");
+  const [date,setDate]=React.useState(entry.date||"");
+  const [concept,setConcept]=React.useState(entry.concept||"");
+  const [amount,setAmount]=React.useState(entry.amount?String(entry.amount):"");
+  const [artist,setArtist]=React.useState(entry.artist||"");
+
+  const label=(txt)=>React.createElement("div",{style:{fontSize:10,fontWeight:700,color:"#555555",textTransform:"uppercase",letterSpacing:1,margin:"12px 0 7px"}},txt);
+  const inputStyle={width:"100%",padding:"9px 10px",borderRadius:8,border:"1px solid #2a2a2a",background:"#1a1a1a",color:"#f0ebe4",fontSize:13,fontFamily:"DM Sans,sans-serif"};
+  const valid=concept.trim()&&date&&amount&&parseFloat(amount)>0;
+
+  return React.createElement("div",{onClick:onClose,style:{position:"fixed",inset:0,background:"rgba(0,0,0,.85)",zIndex:200,display:"flex",alignItems:"flex-end"}},
+    React.createElement("div",{onClick:e=>e.stopPropagation(),style:{background:"#111111",borderRadius:"20px 20px 0 0",padding:"18px 16px 44px",width:"100%",maxHeight:"92vh",overflow:"auto"}},
+      React.createElement("div",{style:{width:38,height:4,background:"#2a2a2a",borderRadius:2,margin:"0 auto 14px"}}),
+
+      React.createElement("div",{style:{display:"flex",gap:7,marginBottom:14}},
+        ["income","expense"].map(t=>React.createElement("div",{key:t,onClick:()=>setType(t),style:{flex:1,textAlign:"center",padding:"8px",borderRadius:8,cursor:"pointer",border:type===t?"2px solid "+(t==="income"?"#16a34a":"#E03A38"):"1px solid #2a2a2a",background:type===t?(t==="income"?"#0a1a0a":"#1a0808"):"#1a1a1a",color:type===t?(t==="income"?"#16a34a":"#E03A38"):"#888",fontWeight:700,fontSize:12}},t==="income"?"💰 Ingreso":"📤 Gasto"))
+      ),
+
+      label("Concepto"),
+      React.createElement("input",{type:"text",value:concept,onChange:e=>setConcept(e.target.value),placeholder:type==="income"?"Ej. Show Cullera":"Ej. Compra Shure Axient",style:{...inputStyle,marginBottom:10}}),
+
+      label("Fecha"),
+      React.createElement("input",{type:"date",value:date,onChange:e=>setDate(e.target.value),style:{...inputStyle,marginBottom:10}}),
+
+      label("Importe (€)"),
+      React.createElement("input",{type:"number",min:0,step:"0.01",value:amount,onChange:e=>setAmount(e.target.value),placeholder:"0",style:{...inputStyle,marginBottom:10}}),
+
+      label("Artista (opcional)"),
+      React.createElement("div",{style:{display:"flex",gap:7,marginBottom:14}},
+        React.createElement("div",{onClick:()=>setArtist(""),style:{flex:1,textAlign:"center",padding:"8px 4px",borderRadius:8,cursor:"pointer",border:artist===""?"2px solid #888":"1px solid #2a2a2a",background:artist===""?"#1a1a1a":"#1a1a1a",color:artist===""?"#f0ebe4":"#888888",fontWeight:700,fontSize:11}},"—"),
+        Object.keys(ARTISTS).map(k=>
+          React.createElement("div",{key:k,onClick:()=>{
+            setArtist(k);
+            if(isNew&&type==="income"&&!amount){
+              const r=SHOW_RATES[k];
+              if(r) setAmount(String(r.fee+r.rental));
+              if(!concept.trim()&&r) setConcept(r.label);
+            }
+          },style:{flex:1,textAlign:"center",padding:"8px 4px",borderRadius:8,cursor:"pointer",border:artist===k?"2px solid "+ARTISTS[k].color:"1px solid #2a2a2a",background:artist===k?ARTISTS[k].bg:"#1a1a1a",color:artist===k?ARTISTS[k].color:"#888888",fontWeight:700,fontSize:11}},ARTISTS[k].short)
+        )
+      ),
+
+      !valid&&React.createElement("div",{style:{fontSize:11,color:"#E03A38",marginBottom:10,textAlign:"center"}},"Completa concepto, fecha e importe"),
+
+      React.createElement("div",{style:{display:"flex",gap:8}},
+        React.createElement("button",{onClick:onClose,style:{flex:1,padding:"10px",borderRadius:10,border:"1px solid #2a2a2a",background:"#1a1a1a",color:"#f0ebe4",fontWeight:600,fontSize:13,cursor:"pointer"}},"Cancelar"),
+        !isNew&&onDelete&&React.createElement("button",{onClick:()=>{if(window.confirm("¿Eliminar este registro?")){onDelete(entry.id);}},style:{padding:"10px 16px",borderRadius:10,border:"1px solid #4a1414",background:"#1a0808",color:"#E03A38",fontWeight:600,fontSize:13,cursor:"pointer"}},"🗑"),
+        React.createElement("button",{disabled:!valid,onClick:()=>onSave({...entry,type,date,concept:concept.trim(),amount:parseFloat(amount),artist:artist||null}),style:{flex:2,padding:"10px",borderRadius:10,border:"none",background:!valid?"#3a1414":"#E03A38",color:"#fff",fontWeight:700,fontSize:13,cursor:!valid?"default":"pointer",opacity:!valid?.5:1}},isNew?"Crear":"Guardar")
+      )
+    )
+  );
+}
+
 // ── STATS PANEL ───────────────────────────────────────────────
 function StatsPanel({shows,conflicts}){
   const confDays=[...new Set(shows.filter(s=>conflicts.has(s.id)).map(s=>s.date))].length;
@@ -757,6 +1183,26 @@ function AdminApp({user, onLogout}){
   React.useEffect(()=>{
     try{ localStorage.setItem("td_shows",JSON.stringify(shows)); }catch(e){}
   },[shows]);
+  const [cases,setCases]=React.useState(()=>{
+    try{
+      const saved=localStorage.getItem("td_cases");
+      if(saved){ const p=JSON.parse(saved); if(Array.isArray(p)&&p.length>0) return p; }
+    }catch(e){}
+    return INITIAL_CASES;
+  });
+  React.useEffect(()=>{
+    try{ localStorage.setItem("td_cases",JSON.stringify(cases)); }catch(e){}
+  },[cases]);
+  const [finances,setFinances]=React.useState(()=>{
+    try{
+      const saved=localStorage.getItem("td_finances");
+      if(saved){ const p=JSON.parse(saved); if(Array.isArray(p)) return p; }
+    }catch(e){}
+    return INITIAL_FINANCES;
+  });
+  React.useEffect(()=>{
+    try{ localStorage.setItem("td_finances",JSON.stringify(finances)); }catch(e){}
+  },[finances]);
   const [tab,setTab]=React.useState("shows");
   const todayMktg=MKTG.filter(e=>isToday(e.date));
   const conflicts=React.useMemo(()=>{
@@ -766,7 +1212,7 @@ function AdminApp({user, onLogout}){
     return ids;
   },[shows]);
   const confDays=[...new Set(shows.filter(s=>conflicts.has(s.id)).map(s=>s.date))].length;
-  const TABS=[{id:"shows",l:"📋"},{id:"conflicts",l:"⚡"+confDays},{id:"marketing",l:"📣"},{id:"office",l:"🏢"},{id:"stats",l:"📊"}];
+  const TABS=[{id:"shows",l:"📋"},{id:"conflicts",l:"⚡"+confDays},{id:"marketing",l:"📣"},{id:"office",l:"🏢"},{id:"material",l:"📦"},{id:"finance",l:"💰"},{id:"stats",l:"📊"}];
   const hdr="#111"; const tbar=dark?"#111":"#fff"; const tbdr=dark?"#2a2a2a":"#f3f4f6";
   return React.createElement("div",{style:{display:"flex",flexDirection:"column",height:"100dvh",width:"100%",background:dark?"#050505":"#0d0d0d"}},
     React.createElement("div",{style:{background:hdr,padding:"12px 15px",display:"flex",alignItems:"center",gap:10,paddingTop:"max(12px,env(safe-area-inset-top))"}},
@@ -786,6 +1232,8 @@ function AdminApp({user, onLogout}){
     tab==="conflicts"&&React.createElement(ConflictsPanel,{shows,conflicts,setShows}),
     tab==="marketing"&&React.createElement(MktgPanel),
     tab==="office"&&React.createElement(OfficePanel),
+    tab==="material"&&React.createElement(MaterialPanel,{cases,setCases}),
+    tab==="finance"&&React.createElement(FinancePanel,{finances,setFinances,shows}),
     tab==="stats"&&React.createElement(StatsPanel,{shows,conflicts})
   );
 }
