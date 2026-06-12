@@ -153,16 +153,21 @@ function StatusDot({s}){
 }
 
 // ── ASSIGN MODAL ─────────────────────────────────────────────
-function AssignModal({show,onClose,onSave}){
+function AssignModal({show,onClose,onSave,onDelete}){
+  const isNew=!show.id;
+  const [artist,setArtist]=React.useState(show.artist||"luar");
+  const [date,setDate]=React.useState(show.date||"");
+  const [venue,setVenue]=React.useState(show.venue||"");
+  const [city,setCity]=React.useState(show.city||"");
   const [sel,setSel]=React.useState([...show.assigned]);
-  const [status,setStatus]=React.useState(show.status);
+  const [status,setStatus]=React.useState(show.status||"confirmed");
   const [notes,setNotes]=React.useState(show.notes||"");
   const [llegada,setLlegada]=React.useState(show.llegada||"");
   const [soundcheck,setSoundcheck]=React.useState(show.soundcheck||"");
   const [showtime,setShowtime]=React.useState(show.showtime||"");
   const [contacto,setContacto]=React.useState(show.contacto||"");
   const [files,setFiles]=React.useState(show.files||[]);
-  const a=ARTISTS[show.artist];
+  const a=ARTISTS[artist];
   const toggle=id=>setSel(p=>p.includes(id)?p.filter(x=>x!==id):[...p,id]);
 
   const handleFile=e=>{
@@ -181,14 +186,28 @@ function AssignModal({show,onClose,onSave}){
   return React.createElement("div",{onClick:onClose,style:{position:"fixed",inset:0,background:"rgba(0,0,0,.65)",zIndex:200,display:"flex",alignItems:"flex-end"}},
     React.createElement("div",{onClick:e=>e.stopPropagation(),style:{background:"#111111",borderRadius:"20px 20px 0 0",padding:"18px 16px 44px",width:"100%",maxHeight:"92vh",overflow:"auto"}},
       React.createElement("div",{style:{width:38,height:4,background:"#e5e7eb",borderRadius:2,margin:"0 auto 14px"}}),
-      React.createElement("div",{style:{fontSize:11,background:a.bg,color:a.color,borderRadius:6,padding:"2px 9px",display:"inline-block",fontWeight:700,marginBottom:8}},a.name),
-      React.createElement("div",{style:{fontSize:16,fontWeight:700,marginBottom:2}},show.venue),
-      React.createElement("div",{style:{fontSize:12,color:"#666666",marginBottom:14}},fmtFull(show.date)+" · "+show.city),
+      isNew&&React.createElement("div",{style:{fontSize:9,letterSpacing:2,textTransform:"uppercase",color:"#E03A38",marginBottom:14,fontFamily:"DM Sans,sans-serif"}},"Nuevo Show"),
+
+      label("Artista"),
+      React.createElement("div",{style:{display:"flex",gap:7,marginBottom:14}},
+        Object.keys(ARTISTS).map(k=>
+          React.createElement("div",{key:k,onClick:()=>setArtist(k),style:{flex:1,textAlign:"center",padding:"8px 4px",borderRadius:8,cursor:"pointer",border:artist===k?"2px solid "+ARTISTS[k].color:"1px solid #2a2a2a",background:artist===k?ARTISTS[k].bg:"#1a1a1a",color:artist===k?ARTISTS[k].color:"#888888",fontWeight:700,fontSize:11}},ARTISTS[k].short)
+        )
+      ),
+
+      label("Fecha"),
+      React.createElement("input",{type:"date",value:date,onChange:e=>setDate(e.target.value),style:{width:"100%",padding:"9px 10px",borderRadius:8,border:"1px solid #2a2a2a",background:"#1a1a1a",color:"#f0ebe4",fontSize:13,marginBottom:10,fontFamily:"DM Sans,sans-serif"}}),
+
+      label("Venue"),
+      React.createElement("input",{type:"text",value:venue,onChange:e=>setVenue(e.target.value),placeholder:"Nombre del venue",style:{width:"100%",padding:"9px 10px",borderRadius:8,border:"1px solid #2a2a2a",background:"#1a1a1a",color:"#f0ebe4",fontSize:13,marginBottom:10,fontFamily:"DM Sans,sans-serif"}}),
+
+      label("Ciudad"),
+      React.createElement("input",{type:"text",value:city,onChange:e=>setCity(e.target.value),placeholder:"Ciudad",style:{width:"100%",padding:"9px 10px",borderRadius:8,border:"1px solid #2a2a2a",background:"#1a1a1a",color:"#f0ebe4",fontSize:13,marginBottom:14,fontFamily:"DM Sans,sans-serif"}}),
 
       label("Técnico asignado"),
       TEAM.map(m=>{
         const on=sel.includes(m.id);
-        return React.createElement("div",{key:m.id,onClick:()=>toggle(m.id),style:{display:"flex",alignItems:"center",gap:10,padding:"8px 12px",borderRadius:10,border:on?"2px solid "+m.color:"2px solid #e5e7eb",background:on?m.bg:"#fafafa",cursor:"pointer",marginBottom:7}},
+        return React.createElement("div",{key:m.id,onClick:()=>toggle(m.id),style:{display:"flex",alignItems:"center",gap:10,padding:"8px 12px",borderRadius:10,border:on?"2px solid "+m.color:"1px solid #2a2a2a",background:on?m.bg:"#1a1a1a",cursor:"pointer",marginBottom:7}},
           React.createElement(Av,{m,sz:28}),
           React.createElement("span",{style:{fontSize:13,fontWeight:600,color:on?m.color:"#f0ebe4",flex:1}},m.name),
           on&&React.createElement("span",{style:{color:m.color}},"✓")
@@ -198,7 +217,7 @@ function AssignModal({show,onClose,onSave}){
       label("Estado"),
       React.createElement("div",{style:{display:"flex",gap:7,marginBottom:4}},
         [["confirmed","Confirmado","#16a34a"],["tbc","TBC","#d97706"],["done","Terminado","#6b7280"]].map(([v,l,c])=>
-          React.createElement("div",{key:v,onClick:()=>setStatus(v),style:{flex:1,textAlign:"center",padding:"6px",borderRadius:8,cursor:"pointer",border:status===v?"2px solid "+c:"2px solid #e5e7eb",background:status===v?c+"22":"#fafafa",color:status===v?c:"#6b7280",fontWeight:600,fontSize:11}},l)
+          React.createElement("div",{key:v,onClick:()=>setStatus(v),style:{flex:1,textAlign:"center",padding:"6px",borderRadius:8,cursor:"pointer",border:status===v?"2px solid "+c:"1px solid #2a2a2a",background:status===v?c+"22":"#1a1a1a",color:status===v?c:"#888888",fontWeight:600,fontSize:11}},l)
         )
       ),
 
@@ -231,9 +250,11 @@ function AssignModal({show,onClose,onSave}){
         React.createElement("input",{type:"file",accept:"*/*",onChange:handleFile,style:{display:"none"}})
       ),
 
+      !venue.trim()&&React.createElement("div",{style:{fontSize:11,color:"#E03A38",marginBottom:10,textAlign:"center"}},"Falta el nombre del venue"),
       React.createElement("div",{style:{display:"flex",gap:8}},
-        React.createElement("button",{onClick:onClose,style:{flex:1,padding:"10px",borderRadius:10,border:"1.5px solid #222",background:"#111111",fontWeight:600,fontSize:13,cursor:"pointer"}},"Cancelar"),
-        React.createElement("button",{onClick:()=>onSave({...show,assigned:sel,status,notes,llegada,soundcheck,showtime,contacto,files}),style:{flex:2,padding:"10px",borderRadius:10,border:"none",background:"#E03A38",color:"#fff",fontWeight:700,fontSize:13,cursor:"pointer"}},"Guardar")
+        React.createElement("button",{onClick:onClose,style:{flex:1,padding:"10px",borderRadius:10,border:"1px solid #2a2a2a",background:"#1a1a1a",color:"#f0ebe4",fontWeight:600,fontSize:13,cursor:"pointer"}},"Cancelar"),
+        !isNew&&onDelete&&React.createElement("button",{onClick:()=>{if(window.confirm("¿Eliminar este show? Esta acción no se puede deshacer.")){onDelete(show.id);}},style:{padding:"10px 16px",borderRadius:10,border:"1px solid #4a1414",background:"#1a0808",color:"#E03A38",fontWeight:600,fontSize:13,cursor:"pointer"}},"🗑"),
+        React.createElement("button",{disabled:!venue.trim()||!date,onClick:()=>onSave({...show,id:show.id||Date.now(),artist,date,venue:venue.trim(),city:city.trim(),assigned:sel,status,notes,llegada,soundcheck,showtime,contacto,files}),style:{flex:2,padding:"10px",borderRadius:10,border:"none",background:(!venue.trim()||!date)?"#3a1414":"#E03A38",color:"#fff",fontWeight:700,fontSize:13,cursor:(!venue.trim()||!date)?"default":"pointer",opacity:(!venue.trim()||!date)?.5:1}},isNew?"Crear Show":"Guardar")
       )
     )
   );
@@ -284,7 +305,9 @@ function ShowsPanel({shows,setShows,conflicts}){
   const filtered=shows.filter(s=>fa==="all"||s.artist===fa).filter(s=>fp==="all"||s.assigned.includes(fp)).sort((a,b)=>a.date.localeCompare(b.date));
   const grouped=groupM(filtered);
   const pill=(label,active,onClick,color,bg)=>React.createElement("button",{onClick,style:{padding:"5px 12px",borderRadius:20,border:active?"2px solid "+color:"1px solid #2a2a2a",background:active?bg:"#1a1a1a",color:active?color:"#888888",fontWeight:600,fontSize:11,cursor:"pointer",whiteSpace:"nowrap"}},label);
+  const blankShow={artist:"luar",date:"",venue:"",city:"",status:"confirmed",assigned:[],notes:""};
   return React.createElement("div",{style:{flex:1,overflow:"auto",padding:"11px 14px 80px"}},
+    React.createElement("button",{onClick:()=>setEditing(blankShow),style:{width:"100%",padding:"11px",borderRadius:10,border:"1px solid #2a1414",background:"#1a0808",color:"#E03A38",fontWeight:700,fontSize:13,cursor:"pointer",marginBottom:11,fontFamily:"DM Sans,sans-serif",letterSpacing:.5}},"+ Nuevo Show"),
     React.createElement("div",{style:{display:"flex",gap:6,flexWrap:"wrap",marginBottom:7}},
       pill("Todos",fa==="all",()=>setFa("all"),"#fff","#111"),
       Object.entries(ARTISTS).map(([k,a])=>pill(a.name,fa===k,()=>setFa(fa===k?"all":k),a.color,a.bg))
@@ -329,7 +352,21 @@ function ShowsPanel({shows,setShows,conflicts}){
         })
       )
     ),
-    editing&&React.createElement(AssignModal,{show:editing,onClose:()=>setEditing(null),onSave:s=>{setShows(p=>p.map(x=>x.id===s.id?s:x));setEditing(null);}})
+    editing&&React.createElement(AssignModal,{
+      show:editing,
+      onClose:()=>setEditing(null),
+      onSave:s=>{
+        setShows(p=>{
+          const exists=p.some(x=>x.id===s.id);
+          return exists?p.map(x=>x.id===s.id?s:x):[...p,s];
+        });
+        setEditing(null);
+      },
+      onDelete:id=>{
+        setShows(p=>p.filter(x=>x.id!==id));
+        setEditing(null);
+      }
+    })
   );
 }
 
@@ -707,7 +744,19 @@ function AdminApp({user, onLogout}){
     document.body.style.background=dark?"#050505":"#111111";
     localStorage.setItem("td_dark",dark?"1":"0");
   },[dark]);
-  const [shows,setShows]=React.useState(ALL_SHOWS);
+  const [shows,setShows]=React.useState(()=>{
+    try{
+      const saved=localStorage.getItem("td_shows");
+      if(saved){
+        const parsed=JSON.parse(saved);
+        if(Array.isArray(parsed)&&parsed.length>0) return parsed;
+      }
+    }catch(e){}
+    return ALL_SHOWS;
+  });
+  React.useEffect(()=>{
+    try{ localStorage.setItem("td_shows",JSON.stringify(shows)); }catch(e){}
+  },[shows]);
   const [tab,setTab]=React.useState("shows");
   const todayMktg=MKTG.filter(e=>isToday(e.date));
   const conflicts=React.useMemo(()=>{
