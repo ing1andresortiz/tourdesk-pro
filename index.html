@@ -9,7 +9,9 @@
   <title>TourDesk Pro</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500\&display=swap" rel="stylesheet"/>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
   <style>
     *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
     html,body{width:100%;height:100%;overflow:hidden}
@@ -24,6 +26,90 @@
 <body>
 <div id="root"><div style="display:flex;align-items:center;justify-content:center;height:100dvh;flex-direction:column;gap:16px"><div class="spinner"></div><div style="font-size:13px;color:#9ca3af">Cargando TourDesk Pro...</div></div></div>
 <script>
+// ── FIREBASE ──────────────────────────────────────────────────
+const firebaseConfig = {
+  apiKey: "AIzaSyBuAyW-pnnMpPOOWAlzhPBaQM9YKd9OBmQ",
+  authDomain: "tourdesk-offstage.firebaseapp.com",
+  projectId: "tourdesk-offstage",
+  storageBucket: "tourdesk-offstage.firebasestorage.app",
+  messagingSenderId: "492887022660",
+  appId: "1:492887022660:web:eec0ebf6f5c213591fb011"
+};
+let fbApp=null, fbDb=null;
+try{
+  fbApp=firebase.initializeApp(firebaseConfig);
+  fbDb=firebase.firestore();
+}catch(e){ console.warn("Firebase init failed",e); }
+
+// useFirebaseStatus: tracks whether Firestore is connected/syncing
+function useFirebaseStatus(){
+  const [status,setStatus]=React.useState(fbDb?"connecting":"offline");
+  React.useEffect(()=>{
+    if(!fbDb){ setStatus("offline"); return; }
+    const ref=fbDb.collection("tourdesk").doc("__ping__");
+    const unsub=ref.onSnapshot(
+      ()=>setStatus("online"),
+      ()=>setStatus("offline")
+    );
+    return unsub;
+  },[]);
+  return status;
+}
+
+// useSyncedState: like useState, but persists to localStorage immediately
+// and syncs to/from Firestore in real time (collection "tourdesk", doc <key>, field "data").
+function useSyncedState(key,initial){
+  const [value,setValue]=React.useState(()=>{
+    try{
+      const saved=localStorage.getItem(key);
+      if(saved){
+        const parsed=JSON.parse(saved);
+        if(Array.isArray(parsed)?parsed.length>0:parsed!=null) return parsed;
+      }
+    }catch(e){}
+    return typeof initial==="function"?initial():initial;
+  });
+  const skipNext=React.useRef(false);
+
+  // Write to localStorage on every change
+  React.useEffect(()=>{
+    try{ localStorage.setItem(key,JSON.stringify(value)); }catch(e){}
+  },[key,value]);
+
+  // Subscribe to Firestore changes (real-time)
+  React.useEffect(()=>{
+    if(!fbDb) return;
+    const ref=fbDb.collection("tourdesk").doc(key);
+    const unsub=ref.onSnapshot(snap=>{
+      if(!snap.exists) return;
+      const remote=snap.data().data;
+      if(remote===undefined) return;
+      // Avoid feedback loop: if this update was caused by our own write, skip once
+      if(skipNext.current){ skipNext.current=false; return; }
+      setValue(prev=>{
+        if(JSON.stringify(prev)===JSON.stringify(remote)) return prev;
+        return remote;
+      });
+    },err=>console.warn("Firestore sync error ("+key+")",err));
+    return unsub;
+  },[key]);
+
+  // Wrapped setter: updates local state AND pushes to Firestore
+  const setSynced=React.useCallback((updater)=>{
+    setValue(prev=>{
+      const next=typeof updater==="function"?updater(prev):updater;
+      if(fbDb){
+        skipNext.current=true;
+        fbDb.collection("tourdesk").doc(key).set({data:next,updatedAt:Date.now()})
+          .catch(err=>console.warn("Firestore write error ("+key+")",err));
+      }
+      return next;
+    });
+  },[key]);
+
+  return [value,setSynced];
+}
+
 // ── DATA ──────────────────────────────────────────────────────
 const TEAM=[
   {id:"yo",name:"Yo (FOH)",        initials:"YO",color:"#E03A38",bg:"#1a0a0a"},
@@ -104,7 +190,7 @@ const ALL_SHOWS=[
 
 // ── MATERIAL / INVENTORY ──────────────────────────────────────
 const INITIAL_CASES=[
-  {id:1,name:"Maleta FOH Luar La L",type:"Pelican 1637",assignedTo:"yo",items:[
+  {id:1,name:"Maleta FOH Luar La L",type:"Pelican 1637",assignedTo:"w1",items:[
     {id:1,name:"Digigrid IOX",qty:1},
     {id:2,name:"Servidor Waves ONE",qty:1},
     {id:3,name:"Switch Netgear",qty:1},
@@ -115,34 +201,47 @@ const INITIAL_CASES=[
   {id:2,name:"Maleta Stage",type:"SKB 4U",assignedTo:"yo",items:[
     {id:1,name:"Digigrid IOX",qty:2},
   ]},
-  {id:3,name:"Maleta FOH Beele",type:"Pelican 1607",assignedTo:null,items:[
+  {id:3,name:"Maleta FOH Beele",type:"Pelican 1607",assignedTo:"yo",items:[
     {id:1,name:"Crest Tactus FOH",qty:1},
     {id:2,name:"Ordenador Dell",qty:1},
     {id:3,name:"Pantalla 15\"",qty:1},
     {id:4,name:"Switch Netgear",qty:1},
     {id:5,name:"Rack SA LV1",qty:1},
   ]},
-  {id:4,name:"Maleta Monitores Beele",type:"Pelican 1607",assignedTo:null,items:[
+  {id:4,name:"Maleta Monitores Beele",type:"Pelican 1607",assignedTo:"yo",items:[
     {id:1,name:"Crest Tactus FOH",qty:1},
     {id:2,name:"Ordenador Dell",qty:1},
     {id:3,name:"Pantalla 15\"",qty:1},
     {id:4,name:"Switch Netgear",qty:1},
     {id:5,name:"Rack SA LV1",qty:1},
   ]},
-  {id:5,name:"Maleta Stage",type:"Fly Pro",assignedTo:null,items:[
+  {id:5,name:"Maleta Stage",type:"Fly Pro",assignedTo:"yo",items:[
     {id:1,name:"Crest Tactus Stage 32x16",qty:1},
   ]},
-  {id:6,name:"Rack Proel",type:"4U",assignedTo:null,items:[
+  {id:6,name:"Rack Proel",type:"4U",assignedTo:"w2",items:[
     {id:1,name:"Crest Tactus Stage 32x16",qty:1},
     {id:2,name:"Ordenador Dell",qty:1},
     {id:3,name:"Servidor Waves",qty:1},
     {id:4,name:"Switch Netgear",qty:1},
     {id:5,name:"Pantalla 15\" táctil",qty:1},
   ]},
+  {id:7,name:"Maleta inears G4",type:"Peli 1510",assignedTo:"w1",items:[
+    {id:1,name:"Rack 2U",qty:1},
+    {id:2,name:"Sennheiser G4 IEM",qty:4},
+  ]},
 ];
 
 // ── FINANCES ───────────────────────────────────────────────────
-const INITIAL_FINANCES=[];
+const INITIAL_FINANCES=[
+  {id:1,type:"income",date:"2026-06-23",concept:"Show Luar La L — Cullera",amount:300,artist:"luar",showId:1,kind:"income"},
+  {id:2,type:"income",date:"2026-06-25",concept:"Show Luar La L — Barcelona",amount:300,artist:"luar",kind:"income"},
+  {id:3,type:"income",date:"2026-06-26",concept:"Show Luar La L — Bilbao",amount:300,artist:"luar",kind:"income"},
+  {id:4,type:"income",date:"2026-06-27",concept:"Show Luar La L — Lleida",amount:300,artist:"luar",kind:"income"},
+  {id:5,type:"income",date:"2026-06-28",concept:"Show Luar La L — Marbella",amount:300,artist:"luar",kind:"income"},
+  {id:6,type:"expense",date:"2026-06-12",concept:"Compra crest tactus FOH + crest tactus stage",amount:3879,artist:null},
+  {id:7,type:"expense",date:"2026-06-12",concept:"Compra ioc",amount:1254,artist:null},
+  {id:8,type:"expense",date:"2026-06-12",concept:"Compra IOX",amount:1480,artist:null},
+];
 
 const MKTG=[
   {id:"m1",date:"2026-06-23",artist:"luar",city:"Cullera",venue:"Beach Club Medusa",type:"reel",time:"Antes del soundcheck",caption:"Arrancamos 🔴\nEuro Tour 2026 🌍\n@luar_lal",ht:"#soundengineer #tourlife #luarlal #fohEngineer",tip:"Setup de consola, 20 segundos.",priority:false},
@@ -1165,44 +1264,24 @@ function LoginScreen({onLogin}){
 
 // ── ADMIN APP
 function AdminApp({user, onLogout}){
+  const syncStatus=useFirebaseStatus();
   const [dark,setDark]=React.useState(()=>localStorage.getItem("td_dark")==="1");
   React.useEffect(()=>{
     document.body.style.background=dark?"#050505":"#111111";
     localStorage.setItem("td_dark",dark?"1":"0");
   },[dark]);
-  const [shows,setShows]=React.useState(()=>{
-    try{
-      const saved=localStorage.getItem("td_shows");
-      if(saved){
-        const parsed=JSON.parse(saved);
-        if(Array.isArray(parsed)&&parsed.length>0) return parsed;
-      }
-    }catch(e){}
-    return ALL_SHOWS;
+  const [shows,setShows]=useSyncedState("td_shows",()=>{
+    if(Array.isArray(ALL_SHOWS)&&ALL_SHOWS.length>0) return ALL_SHOWS;
+    return [];
   });
-  React.useEffect(()=>{
-    try{ localStorage.setItem("td_shows",JSON.stringify(shows)); }catch(e){}
-  },[shows]);
-  const [cases,setCases]=React.useState(()=>{
-    try{
-      const saved=localStorage.getItem("td_cases");
-      if(saved){ const p=JSON.parse(saved); if(Array.isArray(p)&&p.length>0) return p; }
-    }catch(e){}
-    return INITIAL_CASES;
+  const [cases,setCases]=useSyncedState("td_cases",()=>{
+    if(Array.isArray(INITIAL_CASES)&&INITIAL_CASES.length>0) return INITIAL_CASES;
+    return [];
   });
-  React.useEffect(()=>{
-    try{ localStorage.setItem("td_cases",JSON.stringify(cases)); }catch(e){}
-  },[cases]);
-  const [finances,setFinances]=React.useState(()=>{
-    try{
-      const saved=localStorage.getItem("td_finances");
-      if(saved){ const p=JSON.parse(saved); if(Array.isArray(p)) return p; }
-    }catch(e){}
-    return INITIAL_FINANCES;
+  const [finances,setFinances]=useSyncedState("td_finances",()=>{
+    if(Array.isArray(INITIAL_FINANCES)) return INITIAL_FINANCES;
+    return [];
   });
-  React.useEffect(()=>{
-    try{ localStorage.setItem("td_finances",JSON.stringify(finances)); }catch(e){}
-  },[finances]);
   const [tab,setTab]=React.useState("shows");
   const todayMktg=MKTG.filter(e=>isToday(e.date));
   const conflicts=React.useMemo(()=>{
@@ -1219,7 +1298,10 @@ function AdminApp({user, onLogout}){
       React.createElement("div",{style:{width:36,height:36,borderRadius:0,background:"#E03A38",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontFamily:"Bebas Neue,sans-serif",letterSpacing:2,color:"#fff",fontWeight:400}},"OS"),
       React.createElement("div",{style:{flex:1}},
         React.createElement("div",{style:{fontSize:14,fontWeight:700,color:"#fff",fontFamily:"Bebas Neue,system-ui,sans-serif",letterSpacing:2}},"TourDesk Pro"),
-        React.createElement("div",{style:{fontSize:8,color:"#E03A38",letterSpacing:2,textTransform:"uppercase",fontFamily:"DM Sans,sans-serif"}},"OFFSTAGE · "+shows.length+" SHOWS")
+        React.createElement("div",{style:{display:"flex",alignItems:"center",gap:5}},
+          React.createElement("div",{style:{fontSize:8,color:"#E03A38",letterSpacing:2,textTransform:"uppercase",fontFamily:"DM Sans,sans-serif"}},"OFFSTAGE · "+shows.length+" SHOWS"),
+          React.createElement("span",{title:syncStatus==="online"?"Sincronizado":syncStatus==="connecting"?"Conectando...":"Sin conexión",style:{width:6,height:6,borderRadius:"50%",background:syncStatus==="online"?"#16a34a":syncStatus==="connecting"?"#d97706":"#555",flexShrink:0}})
+        )
       ),
       React.createElement("button",{onClick:()=>setDark(d=>!d),style:{background:"none",border:"none",cursor:"pointer",fontSize:16,padding:"3px 6px"}},dark?"☀️":"🌙"),
       React.createElement("button",{onClick:onLogout,style:{background:"#2a2a2a",border:"none",borderRadius:8,color:"#aaa",fontSize:11,padding:"5px 9px",cursor:"pointer"}},"Salir"),
@@ -1240,7 +1322,10 @@ function AdminApp({user, onLogout}){
 
 // ── WORKER APP
 function WorkerApp({user, onLogout}){
-  const [shows]=React.useState(ALL_SHOWS);
+  const [shows]=useSyncedState("td_shows",()=>{
+    if(Array.isArray(ALL_SHOWS)&&ALL_SHOWS.length>0) return ALL_SHOWS;
+    return [];
+  });
   return React.createElement(WorkerView,{user,shows,onLogout});
 }
 
