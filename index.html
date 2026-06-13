@@ -35,25 +35,33 @@ const firebaseConfig = {
   messagingSenderId: "492887022660",
   appId: "1:492887022660:web:eec0ebf6f5c213591fb011"
 };
-let fbApp=null, fbDb=null;
+let fbApp=null, fbDb=null, fbInitError=null;
 try{
+  if(typeof firebase==="undefined") throw new Error("firebase SDK not loaded");
   fbApp=firebase.initializeApp(firebaseConfig);
   fbDb=firebase.firestore();
-}catch(e){ console.warn("Firebase init failed",e); }
+}catch(e){ fbInitError=e.message||String(e); console.warn("Firebase init failed",e); }
 
 // useFirebaseStatus: tracks whether Firestore is connected/syncing
+// status: "online" | "connecting" | "offline" | "error"
 function useFirebaseStatus(){
-  const [status,setStatus]=React.useState(fbDb?"connecting":"offline");
+  const [status,setStatus]=React.useState(fbDb?"connecting":"error");
+  const [errMsg,setErrMsg]=React.useState(fbInitError);
   React.useEffect(()=>{
-    if(!fbDb){ setStatus("offline"); return; }
+    if(!fbDb){ setStatus("error"); return; }
     const ref=fbDb.collection("tourdesk").doc("__ping__");
+    // Try a write first to verify read+write permissions, then subscribe
+    ref.set({ping:Date.now()},{merge:true}).catch(err=>{
+      setErrMsg(err.code+": "+err.message);
+      setStatus("error");
+    });
     const unsub=ref.onSnapshot(
       ()=>setStatus("online"),
-      ()=>setStatus("offline")
+      err=>{ setErrMsg(err.code+": "+err.message); setStatus("error"); }
     );
     return unsub;
   },[]);
-  return status;
+  return [status,errMsg];
 }
 
 // useSyncedState: like useState, but persists to localStorage immediately
@@ -1264,7 +1272,7 @@ function LoginScreen({onLogin}){
 
 // ── ADMIN APP
 function AdminApp({user, onLogout}){
-  const syncStatus=useFirebaseStatus();
+  const [syncStatus,syncError]=useFirebaseStatus();
   const [dark,setDark]=React.useState(()=>localStorage.getItem("td_dark")==="1");
   React.useEffect(()=>{
     document.body.style.background=dark?"#050505":"#111111";
@@ -1300,7 +1308,7 @@ function AdminApp({user, onLogout}){
         React.createElement("div",{style:{fontSize:14,fontWeight:700,color:"#fff",fontFamily:"Bebas Neue,system-ui,sans-serif",letterSpacing:2}},"TourDesk Pro"),
         React.createElement("div",{style:{display:"flex",alignItems:"center",gap:5}},
           React.createElement("div",{style:{fontSize:8,color:"#E03A38",letterSpacing:2,textTransform:"uppercase",fontFamily:"DM Sans,sans-serif"}},"OFFSTAGE · "+shows.length+" SHOWS"),
-          React.createElement("span",{title:syncStatus==="online"?"Sincronizado":syncStatus==="connecting"?"Conectando...":"Sin conexión",style:{width:6,height:6,borderRadius:"50%",background:syncStatus==="online"?"#16a34a":syncStatus==="connecting"?"#d97706":"#555",flexShrink:0}})
+          React.createElement("span",{onClick:()=>{if(syncError) alert("Firebase: "+syncError);},title:syncStatus==="online"?"Sincronizado":syncStatus==="connecting"?"Conectando...":syncStatus==="error"?("Error: "+syncError):"Sin conexión",style:{width:6,height:6,borderRadius:"50%",background:syncStatus==="online"?"#16a34a":syncStatus==="connecting"?"#d97706":syncStatus==="error"?"#ef4444":"#555",flexShrink:0,cursor:syncError?"pointer":"default"}})
         )
       ),
       React.createElement("button",{onClick:()=>setDark(d=>!d),style:{background:"none",border:"none",cursor:"pointer",fontSize:16,padding:"3px 6px"}},dark?"☀️":"🌙"),
