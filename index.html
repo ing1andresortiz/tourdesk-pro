@@ -49,7 +49,7 @@ function useFirebaseStatus(){
   const [errMsg,setErrMsg]=React.useState(fbInitError);
   React.useEffect(()=>{
     if(!fbDb){ setStatus("error"); return; }
-    const ref=fbDb.collection("tourdesk").doc("__ping__");
+    const ref=fbDb.collection("tourdesk").doc("_ping");
     // Try a write first to verify read+write permissions, then subscribe
     ref.set({ping:Date.now()},{merge:true}).catch(err=>{
       setErrMsg(err.code+": "+err.message);
