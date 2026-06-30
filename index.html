@@ -77,7 +77,11 @@ function useSyncedState(key,initial){
     }catch(e){}
     return typeof initial==="function"?initial():initial;
   });
-  const skipNext=React.useRef(false);
+  // Tracks the most recent JSON we wrote, so the matching server echo is ignored
+  // (but any genuinely different remote change always wins).
+  const lastWritten=React.useRef(null);
+  const valueRef=React.useRef(value);
+  valueRef.current=value;
 
   // Write to localStorage on every change
   React.useEffect(()=>{
@@ -88,28 +92,30 @@ function useSyncedState(key,initial){
   React.useEffect(()=>{
     if(!fbDb) return;
     const ref=fbDb.collection("tourdesk").doc(key);
-    const unsub=ref.onSnapshot(snap=>{
+    const unsub=ref.onSnapshot({includeMetadataChanges:false},function(snap){
       if(!snap.exists) return;
       const remote=snap.data().data;
       if(remote===undefined) return;
-      // Avoid feedback loop: if this update was caused by our own write, skip once
-      if(skipNext.current){ skipNext.current=false; return; }
-      setValue(prev=>{
-        if(JSON.stringify(prev)===JSON.stringify(remote)) return prev;
-        return remote;
-      });
-    },err=>console.warn("Firestore sync error ("+key+")",err));
+      const remoteJson=JSON.stringify(remote);
+      // Ignore the echo of our own most recent write
+      if(remoteJson===lastWritten.current) return;
+      // Ignore if it already matches what we have
+      if(remoteJson===JSON.stringify(valueRef.current)) return;
+      // Genuine remote change → apply it
+      setValue(remote);
+    },function(err){ console.warn("Firestore sync error ("+key+")",err); });
     return unsub;
   },[key]);
 
   // Wrapped setter: updates local state AND pushes to Firestore
-  const setSynced=React.useCallback((updater)=>{
-    setValue(prev=>{
+  const setSynced=React.useCallback(function(updater){
+    setValue(function(prev){
       const next=typeof updater==="function"?updater(prev):updater;
+      const nextJson=JSON.stringify(next);
+      lastWritten.current=nextJson;
       if(fbDb){
-        skipNext.current=true;
         fbDb.collection("tourdesk").doc(key).set({data:next,updatedAt:Date.now()})
-          .catch(err=>console.warn("Firestore write error ("+key+")",err));
+          .catch(function(err){ console.warn("Firestore write error ("+key+")",err); });
       }
       return next;
     });
@@ -1115,7 +1121,7 @@ function WorkerView({user, shows, onLogout}){
             return React.createElement("div",{key:s.id,onClick:()=>setDetail(s),style:{background:today?"#1a0000":"#111",borderRadius:12,padding:"12px 14px",marginBottom:8,border:today?"2px solid #E03A38":"1px solid #1e1e1e",opacity:past?0.5:1,cursor:"pointer"}},
               React.createElement("div",{style:{display:"flex",alignItems:"flex-start",gap:10}},
                 React.createElement("div",{style:{textAlign:"center",minWidth:34}},
-                  React.createElement("div",{style:{fontSize:17,fontWeight:800,color:today?"#E03A38":"#111",lineHeight:1}},new Date(s.date+"T12:00:00").getDate()),
+                  React.createElement("div",{style:{fontSize:17,fontWeight:800,color:today?"#E03A38":"#f0ebe4",lineHeight:1}},new Date(s.date+"T12:00:00").getDate()),
                   React.createElement("div",{style:{fontSize:9,color:"#555555",textTransform:"uppercase"}},new Date(s.date+"T12:00:00").toLocaleDateString("es-ES",{month:"short"}))
                 ),
                 React.createElement("div",{style:{flex:1}},
@@ -1123,7 +1129,7 @@ function WorkerView({user, shows, onLogout}){
                     React.createElement("span",{style:{background:a.bg,color:a.color,borderRadius:5,padding:"1px 7px",fontSize:10,fontWeight:700}},a.name),
                     today&&React.createElement("span",{style:{background:"#E03A38",color:"#fff",borderRadius:5,padding:"1px 6px",fontSize:10,fontWeight:700}},"HOY")
                   ),
-                  React.createElement("div",{style:{fontSize:14,fontWeight:700,marginBottom:3}},s.venue),
+                  React.createElement("div",{style:{fontSize:14,fontWeight:700,color:"#f0ebe4",marginBottom:3}},s.venue),
                   React.createElement("div",{style:{fontSize:12,color:"#666666",marginBottom:6}},"📍 "+s.city),
                   (s.llegada||s.soundcheck||s.showtime)&&React.createElement("div",{style:{display:"flex",gap:8,flexWrap:"wrap",marginBottom:6}},
                     s.llegada&&React.createElement("div",{style:{background:"#E6F1FB",color:"#185FA5",borderRadius:7,padding:"3px 8px",fontSize:11,fontWeight:600}},"🚗 Llegada "+s.llegada),
@@ -1131,7 +1137,7 @@ function WorkerView({user, shows, onLogout}){
                     s.showtime&&React.createElement("div",{style:{background:"#1a0a0a",color:"#A32D2D",borderRadius:7,padding:"3px 8px",fontSize:11,fontWeight:600}},"🔴 Show "+s.showtime)
                   ),
                   s.contacto&&React.createElement("div",{style:{fontSize:11,color:"#666666",marginBottom:4}},"📞 "+s.contacto),
-                  s.notes&&React.createElement("div",{style:{marginTop:4,padding:"6px 9px",background:"#f9fafb",borderRadius:8,fontSize:11,color:"#f0ebe4",lineHeight:1.5}},"📝 "+s.notes),
+                  s.notes&&React.createElement("div",{style:{marginTop:4,padding:"6px 9px",background:"#0d0d0d",borderRadius:8,fontSize:11,color:"#ccc",lineHeight:1.5}},"📝 "+s.notes),
                   s.files&&s.files.length>0&&React.createElement("div",{style:{marginTop:6}},
                     React.createElement("div",{style:{fontSize:10,fontWeight:700,color:"#555555",textTransform:"uppercase",letterSpacing:1,marginBottom:5}},"Archivos"),
                     s.files.map((f,i)=>React.createElement("a",{key:i,href:f.data,download:f.name,style:{display:"flex",alignItems:"center",gap:7,padding:"6px 9px",background:"#E6F1FB",borderRadius:8,marginBottom:4,textDecoration:"none"}},
