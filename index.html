@@ -130,18 +130,23 @@ const TEAM=[
   {id:"w1",name:"Andrés Hernández",initials:"AH",color:"#185FA5",bg:"#E6F1FB"},
   {id:"w2",name:"Miguel García",   initials:"MG",color:"#7C3AED",bg:"#EDE9FE"},
 ];
-const ARTISTS={
+const BASE_ARTISTS={
   luar: {name:"Luar La L",color:"#E03A38",bg:"#1a0a0a",short:"LL"},
   beele:{name:"Beele",    color:"#0F6E56",bg:"#E1F5EE",short:"BE"},
   hades:{name:"Hades 66", color:"#7C3AED",bg:"#EDE9FE",short:"H6"},
 };
+// ARTISTS y SHOW_RATES se reconstruyen en cada render (AdminApp/WorkerApp) a
+// partir de BASE_* + los artistas que añada el usuario (estado sincronizado
+// "td_artists"). Ver applyCustomArtists().
+let ARTISTS={...BASE_ARTISTS};
 
 // ── RATES — tarifas por show y pagos al equipo ─────────────────
-const SHOW_RATES={
+const BASE_SHOW_RATES={
   luar:  {fee:300, rental:0,   label:"Show Luar La L"},
   beele: {fee:500, rental:100, label:"Show Beele"},
   hades: {fee:350, rental:0,   label:"Show Hades 66"},
 };
+let SHOW_RATES={...BASE_SHOW_RATES};
 const CREW_RATES={
   w1: 200, // Andrés Hernández
   w2: 250, // Miguel García
@@ -150,6 +155,39 @@ const rateTotal=artist=>{
   const r=SHOW_RATES[artist];
   return r?r.fee+r.rental:0;
 };
+
+// Paleta para artistas nuevos: [color de texto, color de fondo del chip]
+const ARTIST_PALETTE=[
+  ["#185FA5","#E6F1FB"], // azul
+  ["#B45309","#FEF3C7"], // ámbar
+  ["#BE185D","#FCE7F3"], // rosa
+  ["#0E7490","#CFFAFE"], // cian
+  ["#4D7C0F","#ECFCCB"], // lima
+  ["#4338CA","#E0E7FF"], // índigo
+];
+
+// Reconstruye los globales ARTISTS y SHOW_RATES = base + artistas del usuario.
+// Se llama en el render de AdminApp/WorkerApp para que TODOS los componentes
+// (que leen ARTISTS/SHOW_RATES directamente) vean los artistas añadidos.
+function applyCustomArtists(custom){
+  const obj={...BASE_ARTISTS};
+  const rates={...BASE_SHOW_RATES};
+  if(custom&&typeof custom==="object"){
+    Object.keys(custom).forEach(function(k){
+      const a=custom[k]; if(!a) return;
+      obj[k]={name:a.name,short:a.short,color:a.color,bg:a.bg};
+      rates[k]={fee:Number(a.fee)||0,rental:Number(a.rental)||0,label:"Show "+a.name};
+    });
+  }
+  // Proxy defensivo: si un show apunta a un artista borrado, devolvemos un
+  // marcador en vez de romper la app. La iteración (Object.keys/entries) usa
+  // las claves reales del objeto, así que no se ve afectada.
+  ARTISTS=new Proxy(obj,{get:function(t,p){
+    if(typeof p==="string"&&!(p in t)) return {name:"?",short:"?",color:"#888888",bg:"#1a1a1a"};
+    return t[p];
+  }});
+  SHOW_RATES=rates;
+}
 const ALL_SHOWS=[
   {id:1, date:"2026-06-23",artist:"luar", venue:"Beach Club Medusa",city:"Cullera",status:"confirmed",assigned:["yo"],notes:""},
   {id:2, date:"2026-06-25",artist:"luar", venue:"Shoko",city:"Barcelona",status:"confirmed",assigned:["yo"],notes:""},
@@ -324,7 +362,7 @@ function StatusDot({s}){
 }
 
 // ── ASSIGN MODAL ─────────────────────────────────────────────
-function AssignModal({show,onClose,onSave,onDelete}){
+function AssignModal({show,onClose,onSave,onDelete,onAddArtist,onRemoveArtist,customArtists}){
   const isNew=!show.id;
   const [artist,setArtist]=React.useState(show.artist||"luar");
   const [date,setDate]=React.useState(show.date||"");
@@ -340,6 +378,32 @@ function AssignModal({show,onClose,onSave,onDelete}){
   const [files,setFiles]=React.useState(show.files||[]);
   const a=ARTISTS[artist];
   const toggle=id=>setSel(p=>p.includes(id)?p.filter(x=>x!==id):[...p,id]);
+
+  // ── Añadir artista nuevo ──
+  const [addingArtist,setAddingArtist]=React.useState(false);
+  const [naName,setNaName]=React.useState("");
+  const [naShort,setNaShort]=React.useState("");
+  const [naFee,setNaFee]=React.useState("");
+  const [naCol,setNaCol]=React.useState(0);
+  const makeArtistKey=function(nm){
+    let slug=(nm||"art").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9]/g,"").slice(0,12)||"art";
+    let key=slug,i=2;
+    while(key in ARTISTS){ key=slug+i; i++; }
+    return key;
+  };
+  const doAddArtist=function(){
+    const nm=naName.trim(); if(!nm||!onAddArtist) return;
+    const pal=ARTIST_PALETTE[naCol]||ARTIST_PALETTE[0];
+    const color=pal[0], bg=pal[1];
+    const sh=(naShort.trim()||nm.slice(0,2)).toUpperCase().slice(0,3);
+    const key=makeArtistKey(nm);
+    onAddArtist(key,{name:nm,short:sh,color:color,bg:bg,fee:Number(naFee)||0,rental:0});
+    // Reflejo inmediato en los globales para que este modal lo muestre ya
+    ARTISTS[key]={name:nm,short:sh,color:color,bg:bg};
+    SHOW_RATES[key]={fee:Number(naFee)||0,rental:0,label:"Show "+nm};
+    setArtist(key);
+    setAddingArtist(false); setNaName(""); setNaShort(""); setNaFee(""); setNaCol(0);
+  };
 
   const handleFile=e=>{
     const f=e.target.files[0]; if(!f)return;
@@ -360,9 +424,37 @@ function AssignModal({show,onClose,onSave,onDelete}){
       isNew&&React.createElement("div",{style:{fontSize:9,letterSpacing:2,textTransform:"uppercase",color:"#E03A38",marginBottom:14,fontFamily:"DM Sans,sans-serif"}},"Nuevo Show"),
 
       label("Artista"),
-      React.createElement("div",{style:{display:"flex",gap:7,marginBottom:14}},
-        Object.keys(ARTISTS).map(k=>
-          React.createElement("div",{key:k,onClick:()=>setArtist(k),style:{flex:1,textAlign:"center",padding:"8px 4px",borderRadius:8,cursor:"pointer",border:artist===k?"2px solid "+ARTISTS[k].color:"1px solid #2a2a2a",background:artist===k?ARTISTS[k].bg:"#1a1a1a",color:artist===k?ARTISTS[k].color:"#888888",fontWeight:700,fontSize:11}},ARTISTS[k].short)
+      React.createElement("div",{style:{display:"flex",flexWrap:"wrap",gap:7,marginBottom:addingArtist?10:14}},
+        Object.keys(ARTISTS).map(function(k){
+          const on=artist===k;
+          return React.createElement("div",{key:k,onClick:function(){setArtist(k);},style:{flex:"1 1 52px",minWidth:52,textAlign:"center",padding:"8px 4px",borderRadius:8,cursor:"pointer",border:on?"2px solid "+ARTISTS[k].color:"1px solid #2a2a2a",background:on?ARTISTS[k].bg:"#1a1a1a",color:on?ARTISTS[k].color:"#888888",fontWeight:700,fontSize:11}},ARTISTS[k].short);
+        }),
+        onAddArtist&&React.createElement("div",{onClick:function(){setAddingArtist(function(v){return !v;});},style:{flex:"0 0 auto",minWidth:44,textAlign:"center",padding:"8px 10px",borderRadius:8,cursor:"pointer",border:"1px dashed "+(addingArtist?"#E03A38":"#3a3a3a"),background:addingArtist?"#1a0808":"#141414",color:addingArtist?"#E03A38":"#888888",fontWeight:700,fontSize:14}},addingArtist?"×":"＋")
+      ),
+      addingArtist&&onAddArtist&&React.createElement("div",{style:{background:"#0d0d0d",border:"1px solid #222",borderRadius:10,padding:"12px 12px 14px",marginBottom:14}},
+        React.createElement("div",{style:{fontSize:9,letterSpacing:2,textTransform:"uppercase",color:"#E03A38",marginBottom:10,fontFamily:"DM Sans,sans-serif"}},"Nuevo artista"),
+        React.createElement("div",{style:{display:"flex",gap:8,marginBottom:8}},
+          React.createElement("input",{value:naName,onChange:function(e){const v=e.target.value;setNaName(v);if(!naShort.trim())setNaShort(v.slice(0,2).toUpperCase());},placeholder:"Nombre del artista",style:{flex:2,minWidth:0,padding:"9px 10px",borderRadius:8,border:"1px solid #2a2a2a",background:"#1a1a1a",color:"#f0ebe4",fontSize:13}}),
+          React.createElement("input",{value:naShort,onChange:function(e){setNaShort(e.target.value.toUpperCase().slice(0,3));},placeholder:"XX",maxLength:3,style:{flex:"0 0 58px",width:58,textAlign:"center",padding:"9px 6px",borderRadius:8,border:"1px solid #2a2a2a",background:"#1a1a1a",color:"#f0ebe4",fontSize:13,fontWeight:700}})
+        ),
+        React.createElement("input",{type:"number",min:0,step:"1",value:naFee,onChange:function(e){setNaFee(e.target.value);},placeholder:"Caché por show (€)",style:{width:"100%",padding:"9px 10px",borderRadius:8,border:"1px solid #2a2a2a",background:"#1a1a1a",color:"#f0ebe4",fontSize:13,marginBottom:9}}),
+        React.createElement("div",{style:{display:"flex",gap:7,marginBottom:11}},
+          ARTIST_PALETTE.map(function(p,idx){
+            const selc=naCol===idx;
+            return React.createElement("div",{key:idx,onClick:function(){setNaCol(idx);},style:{flex:1,height:26,borderRadius:7,cursor:"pointer",background:p[0],border:selc?"2px solid #f0ebe4":"2px solid transparent"}});
+          })
+        ),
+        React.createElement("button",{disabled:!naName.trim(),onClick:doAddArtist,style:{width:"100%",padding:"10px",borderRadius:9,border:"none",background:!naName.trim()?"#3a1414":"#E03A38",color:"#fff",fontWeight:700,fontSize:13,cursor:!naName.trim()?"default":"pointer",opacity:!naName.trim()?.6:1}},"Añadir artista"),
+        (customArtists&&Object.keys(customArtists).length>0)&&React.createElement("div",{style:{marginTop:12,borderTop:"1px solid #1e1e1e",paddingTop:10}},
+          React.createElement("div",{style:{fontSize:9,letterSpacing:1,textTransform:"uppercase",color:"#555",marginBottom:8}},"Tus artistas"),
+          Object.keys(customArtists).map(function(k){
+            const ca=customArtists[k];
+            return React.createElement("div",{key:k,style:{display:"flex",alignItems:"center",gap:8,marginBottom:6}},
+              React.createElement("span",{style:{background:ca.bg,color:ca.color,borderRadius:5,padding:"2px 7px",fontSize:10,fontWeight:700}},ca.short),
+              React.createElement("span",{style:{flex:1,fontSize:12,color:"#ccc",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},ca.name+(ca.fee?" · "+ca.fee+"€":"")),
+              onRemoveArtist&&React.createElement("button",{onClick:function(){if(window.confirm("¿Quitar "+ca.name+"? Los shows ya creados no se borran.")){onRemoveArtist(k);if(artist===k)setArtist("luar");}},style:{background:"none",border:"none",color:"#E03A38",fontSize:16,cursor:"pointer",padding:"0 4px"}},"×")
+            );
+          })
         )
       ),
 
@@ -469,7 +561,7 @@ function MktgModal({ev,onClose}){
 }
 
 // ── SHOWS PANEL ───────────────────────────────────────────────
-function ShowsPanel({shows,setShows,conflicts}){
+function ShowsPanel({shows,setShows,conflicts,onAddArtist,onRemoveArtist,customArtists}){
   const [fa,setFa]=React.useState("all");
   const [fp,setFp]=React.useState("all");
   const [editing,setEditing]=React.useState(null);
@@ -525,6 +617,7 @@ function ShowsPanel({shows,setShows,conflicts}){
     ),
     editing&&React.createElement(AssignModal,{
       show:editing,
+      onAddArtist,onRemoveArtist,customArtists,
       onClose:()=>setEditing(null),
       onSave:s=>{
         setShows(p=>{
@@ -820,6 +913,20 @@ function FinancePanel({finances,setFinances,shows}){
   const totalExpense=expense.reduce((s,f)=>s+f.amount,0);
   const net=totalIncome-totalExpense;
 
+  // ── Reparto del equipo ──
+  // Los pagos al equipo se guardan como gastos con kind "crew_<id>".
+  const isCrewPay=function(f){ return f.type==="expense"&&typeof f.kind==="string"&&f.kind.indexOf("crew_")===0; };
+  const crewPays=finances.filter(isCrewPay);
+  const totalCrew=crewPays.reduce(function(s,f){return s+f.amount;},0);
+  const yourShare=totalIncome-totalCrew; // lo que te queda de los shows tras pagar al equipo
+  const crewEarnings=TEAM.filter(function(m){return m.id!=="yo";}).map(function(m){
+    const paid=crewPays.filter(function(f){return f.kind==="crew_"+m.id;});
+    const total=paid.reduce(function(s,f){return s+f.amount;},0);
+    const rate=CREW_RATES[m.id]||0;
+    const owed=shows.filter(function(s){return s.assigned.indexOf(m.id)>=0&&(isPast(s.date)||isToday(s.date))&&!finances.some(function(f){return f.showId===s.id&&f.kind==="crew_"+m.id;});});
+    return {m:m,total:total,count:paid.length,pending:owed.length*rate,pendingCount:owed.length};
+  });
+
   const filtered=finances.filter(f=>filter==="all"||f.type===filter)
     .sort((a,b)=>b.date.localeCompare(a.date));
 
@@ -845,8 +952,37 @@ function FinancePanel({finances,setFinances,shows}){
       )
     ),
     React.createElement("div",{style:{background:net>=0?"#0a1a0a":"#1a0a0a",borderRadius:11,padding:13,border:"1px solid "+(net>=0?"#1a3a1a":"#3a1a1a"),marginBottom:13,display:"flex",alignItems:"center",justifyContent:"space-between"}},
-      React.createElement("div",{style:{fontSize:11,color:"#888",fontWeight:600}},"Balance neto"),
+      React.createElement("div",null,
+        React.createElement("div",{style:{fontSize:11,color:"#888",fontWeight:600}},"Balance total"),
+        React.createElement("div",{style:{fontSize:9,color:"#555"}},"incluye inversión en equipo")
+      ),
       React.createElement("div",{style:{fontSize:24,fontWeight:800,color:net>=0?"#16a34a":"#ef4444"}},(net>=0?"+":"")+fmtMoney(net))
+    ),
+
+    // Reparto del equipo + tu parte (después de pagar al equipo)
+    React.createElement("div",{style:{background:"#111111",borderRadius:11,padding:"13px 15px",border:"1px solid #1e1e1e",marginBottom:13}},
+      React.createElement("div",{style:{fontSize:10,fontWeight:700,color:"#555555",textTransform:"uppercase",letterSpacing:1,marginBottom:12}},"👥 Lo que ha ganado el equipo"),
+      crewEarnings.map(function(ce){
+        return React.createElement("div",{key:ce.m.id,style:{display:"flex",alignItems:"center",gap:10,marginBottom:11}},
+          React.createElement(Av,{m:ce.m,sz:30}),
+          React.createElement("div",{style:{flex:1,minWidth:0}},
+            React.createElement("div",{style:{fontSize:13,fontWeight:600,color:"#f0ebe4"}},ce.m.name),
+            React.createElement("div",{style:{fontSize:10,color:"#555"}},ce.count+(ce.count===1?" show pagado":" shows pagados")+(ce.pending>0?" · le debes "+fmtMoney(ce.pending):""))
+          ),
+          React.createElement("div",{style:{textAlign:"right",flexShrink:0}},
+            React.createElement("div",{style:{fontSize:16,fontWeight:800,color:ce.m.color}},fmtMoney(ce.total)),
+            ce.pending>0&&React.createElement("div",{style:{fontSize:10,fontWeight:700,color:"#d97706"}},ce.pendingCount+" pend.")
+          )
+        );
+      }),
+      React.createElement("div",{style:{height:1,background:"#1e1e1e",margin:"5px 0 11px"}}),
+      React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between"}},
+        React.createElement("div",null,
+          React.createElement("div",{style:{fontSize:13,fontWeight:700,color:"#f0ebe4"}},"Tu parte"),
+          React.createElement("div",{style:{fontSize:10,color:"#555"}},"Ingresos − pagos al equipo")
+        ),
+        React.createElement("div",{style:{fontSize:22,fontWeight:800,color:yourShare>=0?"#16a34a":"#ef4444"}},(yourShare>=0?"+":"")+fmtMoney(yourShare))
+      )
     ),
 
     // Quick log from shows
@@ -1296,6 +1432,14 @@ function AdminApp({user, onLogout}){
     if(Array.isArray(INITIAL_FINANCES)) return INITIAL_FINANCES;
     return [];
   });
+  const [customArtists,setCustomArtists]=useSyncedState("td_artists",{});
+  applyCustomArtists(customArtists); // reconstruye ARTISTS/SHOW_RATES antes de renderizar hijos
+  const addArtist=React.useCallback(function(key,data){
+    setCustomArtists(function(prev){ const n={...prev}; n[key]=data; return n; });
+  },[setCustomArtists]);
+  const removeArtist=React.useCallback(function(key){
+    setCustomArtists(function(prev){ const n={...prev}; delete n[key]; return n; });
+  },[setCustomArtists]);
   const [tab,setTab]=React.useState("shows");
   const todayMktg=MKTG.filter(e=>isToday(e.date));
   const conflicts=React.useMemo(()=>{
@@ -1324,7 +1468,7 @@ function AdminApp({user, onLogout}){
     React.createElement("div",{style:{background:"#0f0f0f",borderBottom:"1px solid #1e1e1e",display:"flex",flexShrink:0}},
       TABS.map(t=>React.createElement("button",{key:t.id,onClick:()=>setTab(t.id),style:{flex:1,padding:"11px 2px",border:"none",background:"transparent",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"DM Sans,sans-serif",letterSpacing:.5,color:tab===t.id?"#E03A38":"#555555",borderBottom:tab===t.id?"2.5px solid #E03A38":"2.5px solid transparent"}},t.l))
     ),
-    tab==="shows"&&React.createElement(ShowsPanel,{shows,setShows,conflicts}),
+    tab==="shows"&&React.createElement(ShowsPanel,{shows,setShows,conflicts,onAddArtist:addArtist,onRemoveArtist:removeArtist,customArtists}),
     tab==="conflicts"&&React.createElement(ConflictsPanel,{shows,conflicts,setShows}),
     tab==="marketing"&&React.createElement(MktgPanel),
     tab==="office"&&React.createElement(OfficePanel),
@@ -1340,6 +1484,8 @@ function WorkerApp({user, onLogout}){
     if(Array.isArray(ALL_SHOWS)&&ALL_SHOWS.length>0) return ALL_SHOWS;
     return [];
   });
+  const [customArtists]=useSyncedState("td_artists",{});
+  applyCustomArtists(customArtists);
   return React.createElement(WorkerView,{user,shows,onLogout});
 }
 
