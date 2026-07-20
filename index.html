@@ -284,16 +284,9 @@ const INITIAL_CASES=[
 ];
 
 // ── FINANCES ───────────────────────────────────────────────────
-const INITIAL_FINANCES=[
-  {id:1,type:"income",date:"2026-06-23",concept:"Show Luar La L — Cullera",amount:300,artist:"luar",showId:1,kind:"income"},
-  {id:2,type:"income",date:"2026-06-25",concept:"Show Luar La L — Barcelona",amount:300,artist:"luar",kind:"income"},
-  {id:3,type:"income",date:"2026-06-26",concept:"Show Luar La L — Bilbao",amount:300,artist:"luar",kind:"income"},
-  {id:4,type:"income",date:"2026-06-27",concept:"Show Luar La L — Lleida",amount:300,artist:"luar",kind:"income"},
-  {id:5,type:"income",date:"2026-06-28",concept:"Show Luar La L — Marbella",amount:300,artist:"luar",kind:"income"},
-  {id:6,type:"expense",date:"2026-06-12",concept:"Compra crest tactus FOH + crest tactus stage",amount:3879,artist:null},
-  {id:7,type:"expense",date:"2026-06-12",concept:"Compra ioc",amount:1254,artist:null},
-  {id:8,type:"expense",date:"2026-06-12",concept:"Compra IOX",amount:1480,artist:null},
-];
+// Empieza VACÍO. Ingresos y pagos se registran desde el Registro rápido
+// (o con + Ingreso / + Gasto) para llevar el conteo real de ganado y pagado.
+const INITIAL_FINANCES=[];
 
 const MKTG=[
   {id:"m1",date:"2026-06-23",artist:"luar",city:"Cullera",venue:"Beach Club Medusa",type:"reel",time:"Antes del soundcheck",caption:"Arrancamos 🔴\nEuro Tour 2026 🌍\n@luar_lal",ht:"#soundengineer #tourlife #luarlal #fohEngineer",tip:"Setup de consola, 20 segundos.",priority:false},
@@ -1015,6 +1008,11 @@ function FinancePanel({finances,setFinances,shows}){
       React.createElement("div",{style:{fontSize:14,fontWeight:600,color:"#f0ebe4"}},"Sin registros")
     ),
 
+    // Reiniciar a cero (ingresos + pagos)
+    (finances.length>0)&&React.createElement("div",{style:{marginTop:18,paddingTop:14,borderTop:"1px solid #1a1a1a",textAlign:"center"}},
+      React.createElement("button",{onClick:function(){ if(window.confirm("¿Poner las finanzas a 0? Se borran TODOS los ingresos y pagos registrados. No se puede deshacer.")){ setFinances([]); } },style:{background:"none",border:"1px solid #2a1414",color:"#8a4a4a",fontSize:11,fontWeight:600,padding:"9px 16px",borderRadius:8,cursor:"pointer",letterSpacing:.3}},"↺ Empezar de 0 · borrar ingresos y pagos")
+    ),
+
     editing&&React.createElement(FinanceModal,{
       entry:editing,
       onClose:()=>setEditing(null),
@@ -1037,13 +1035,15 @@ function FinancePanel({finances,setFinances,shows}){
 // ── QUICK LOG FROM SHOWS ──────────────────────────────────────
 function QuickLogShows({shows,finances,setFinances}){
   const [open,setOpen]=React.useState(false);
+  const [fa,setFa]=React.useState("all");
   const today=new Date().toISOString().slice(0,10);
 
-  // Shows within ±14 days of today, sorted by date
-  const relevant=shows.filter(s=>{
-    const diff=(new Date(s.date+"T12:00:00")-new Date(today+"T12:00:00"))/(1000*60*60*24);
-    return diff>=-7&&diff<=21;
-  }).sort((a,b)=>a.date.localeCompare(b.date));
+  // TODOS los shows (para poder registrar cobros y pagos de todo el tour), en
+  // orden cronológico y filtrables por artista.
+  const relevant=shows.filter(s=>fa==="all"||s.artist===fa).sort((a,b)=>a.date.localeCompare(b.date));
+  // Shows cuyo cobro aún no se ha registrado (indicador en la cabecera)
+  const pendingCount=shows.filter(s=>SHOW_RATES[s.artist]&&!finances.some(f=>f.showId===s.id&&f.kind==="income")).length;
+  const pill=(label,active,onClick,color,bg)=>React.createElement("button",{onClick,style:{padding:"4px 10px",borderRadius:20,border:active?"2px solid "+color:"1px solid #2a2a2a",background:active?bg:"#1a1a1a",color:active?color:"#888888",fontWeight:700,fontSize:10,cursor:"pointer",whiteSpace:"nowrap"}},label);
 
   const fmtDate=d=>new Date(d+"T12:00:00").toLocaleDateString("es-ES",{day:"2-digit",month:"short"});
 
@@ -1066,14 +1066,22 @@ function QuickLogShows({shows,finances,setFinances}){
     setFinances(p=>[...p,{id:Date.now()+Math.random(),type:"expense",date:s.date,concept,amount:rate,artist:s.artist,showId:s.id,kind:"crew_"+memberId}]);
   };
 
-  if(relevant.length===0) return null;
+  if(shows.length===0) return null;
 
   return React.createElement("div",{style:{background:"#111111",borderRadius:11,padding:"11px 13px",marginBottom:13,border:"1px solid #1e1e1e"}},
     React.createElement("div",{onClick:()=>setOpen(!open),style:{display:"flex",alignItems:"center",justifyContent:"space-between",cursor:"pointer"}},
-      React.createElement("div",{style:{fontSize:11,fontWeight:700,color:"#E03A38",letterSpacing:1,textTransform:"uppercase"}},"⚡ Registro rápido"),
+      React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8}},
+        React.createElement("div",{style:{fontSize:11,fontWeight:700,color:"#E03A38",letterSpacing:1,textTransform:"uppercase"}},"⚡ Registro rápido"),
+        pendingCount>0&&React.createElement("span",{style:{fontSize:10,fontWeight:700,color:"#d97706",background:"#3a2a0a",borderRadius:20,padding:"1px 8px"}},pendingCount+" por cobrar")
+      ),
       React.createElement("span",{style:{fontSize:13,color:"#555",transform:open?"rotate(180deg)":"none",transition:"transform .2s",display:"inline-block"}},"⌄")
     ),
     open&&React.createElement("div",{style:{marginTop:11}},
+      React.createElement("div",{style:{display:"flex",gap:6,flexWrap:"wrap",marginBottom:9}},
+        pill("Todos",fa==="all",()=>setFa("all"),"#fff","#1a1a1a"),
+        Object.entries(ARTISTS).map(([k,a])=>pill(a.short,fa===k,()=>setFa(fa===k?"all":k),a.color,a.bg))
+      ),
+      relevant.length===0&&React.createElement("div",{style:{fontSize:12,color:"#555",textAlign:"center",padding:"14px 0"}},"Sin shows de este artista"),
       relevant.map(s=>{
         const r=SHOW_RATES[s.artist];
         const incomeDone=alreadyLogged(s.id,"income");
