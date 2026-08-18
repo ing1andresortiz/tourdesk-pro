@@ -6,6 +6,10 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="TourDesk Pro"/>
+  <meta name="theme-color" content="#0a0a0a"/>
+  <link rel="manifest" href="manifest.webmanifest"/>
+  <link rel="apple-touch-icon" href="apple-touch-icon.png"/>
+  <link rel="icon" type="image/png" href="icon-192.png"/>
   <title>TourDesk Pro</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
@@ -40,6 +44,9 @@ try{
   if(typeof firebase==="undefined") throw new Error("firebase SDK not loaded");
   fbApp=firebase.initializeApp(firebaseConfig);
   fbDb=firebase.firestore();
+  // Persistencia offline: la crew puede usar la app sin wifi en los venues.
+  // Los cambios se guardan en local y se sincronizan al recuperar conexión.
+  try{ fbDb.enablePersistence({synchronizeTabs:true}).catch(function(){}); }catch(e){}
 }catch(e){ fbInitError=e.message||String(e); console.warn("Firebase init failed",e); }
 
 // useFirebaseStatus: tracks whether Firestore is connected/syncing
@@ -398,13 +405,39 @@ function AssignModal({show,onClose,onSave,onDelete,onAddArtist,onRemoveArtist,cu
     setAddingArtist(false); setNaName(""); setNaShort(""); setNaFee(""); setNaCol(0);
   };
 
+  // Los archivos se guardan (por ahora) dentro del documento de Firestore, que
+  // tiene un límite de ~1MB. Para no romper la sincronización: las imágenes se
+  // comprimen automáticamente y los demás archivos se bloquean si son grandes.
+  // (La versión con almacenamiento real de Firebase eliminará este límite.)
+  const MAX_FILE=650*1024;
   const handleFile=e=>{
     const f=e.target.files[0]; if(!f)return;
-    const reader=new FileReader();
-    reader.onload=ev=>{
-      setFiles(prev=>[...prev,{name:f.name,size:f.size,type:f.type,data:ev.target.result,uploaded:new Date().toLocaleDateString("es-ES")}]);
-    };
-    reader.readAsDataURL(f);
+    e.target.value=""; // permite volver a elegir el mismo archivo
+    const add=(dataUrl,approxSize)=>setFiles(prev=>[...prev,{name:f.name,size:approxSize||f.size,type:f.type,data:dataUrl,uploaded:new Date().toLocaleDateString("es-ES")}]);
+    if(f.type&&f.type.indexOf("image/")===0){
+      const reader=new FileReader();
+      reader.onload=ev=>{
+        const img=new Image();
+        img.onload=()=>{
+          let w=img.width,h=img.height,max=1600;
+          if(w>max||h>max){const r=Math.min(max/w,max/h);w=Math.round(w*r);h=Math.round(h*r);}
+          const cv=document.createElement("canvas");cv.width=w;cv.height=h;
+          cv.getContext("2d").drawImage(img,0,0,w,h);
+          let q=0.85,out=cv.toDataURL("image/jpeg",q);
+          while(out.length>MAX_FILE&&q>0.4){q-=0.15;out=cv.toDataURL("image/jpeg",q);}
+          if(out.length>MAX_FILE){alert("La imagen sigue siendo muy pesada tras comprimir. Sube una versión más ligera (pronto habrá almacenamiento real sin este límite).");return;}
+          add(out,Math.round(out.length*0.75));
+        };
+        img.onerror=()=>alert("No se pudo procesar la imagen.");
+        img.src=ev.target.result;
+      };
+      reader.readAsDataURL(f);
+    }else{
+      if(f.size>MAX_FILE){alert("\""+f.name+"\" pesa "+Math.round(f.size/1024)+" KB y supera el límite temporal de "+Math.round(MAX_FILE/1024)+" KB (los archivos se guardan dentro de la base de datos). Sube una versión más ligera; la próxima versión con almacenamiento real permitirá archivos grandes.");return;}
+      const reader=new FileReader();
+      reader.onload=ev=>add(ev.target.result,f.size);
+      reader.readAsDataURL(f);
+    }
   };
   const removeFile=i=>setFiles(prev=>prev.filter((_,idx)=>idx!==i));
 
@@ -1507,7 +1540,37 @@ function App(){
   return React.createElement(AdminApp,{user,onLogout:logout});
 }
 
-ReactDOM.createRoot(document.getElementById("root")).render(React.createElement(App));
+// ── ERROR BOUNDARY ────────────────────────────────────────────
+// Si algo lanza un error, en vez de pantalla en blanco mostramos un aviso
+// y un botón para recargar. Los datos en Firestore/local no se pierden.
+class ErrorBoundary extends React.Component{
+  constructor(p){super(p);this.state={err:null};}
+  static getDerivedStateFromError(err){return {err:err};}
+  componentDidCatch(err,info){console.error("TourDesk error:",err,info);}
+  render(){
+    if(this.state.err){
+      return React.createElement("div",{style:{height:"100dvh",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:14,background:"#0a0a0a",color:"#f0ebe4",padding:28,textAlign:"center",fontFamily:"DM Sans,system-ui,sans-serif"}},
+        React.createElement("div",{style:{fontSize:34}},"⚠️"),
+        React.createElement("div",{style:{fontSize:15,fontWeight:700}},"Algo se ha atascado"),
+        React.createElement("div",{style:{fontSize:12,color:"#888",maxWidth:300,lineHeight:1.5}},"Tus datos están a salvo. Recarga para volver a la app."),
+        React.createElement("button",{onClick:function(){location.reload();},style:{marginTop:6,padding:"11px 22px",borderRadius:10,border:"none",background:"#E03A38",color:"#fff",fontWeight:700,fontSize:13,cursor:"pointer"}},"Recargar")
+      );
+    }
+    return this.props.children;
+  }
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(
+  React.createElement(ErrorBoundary,null,React.createElement(App))
+);
+
+// ── SERVICE WORKER ────────────────────────────────────────────
+// Hace la app instalable en el móvil y utilizable offline (app shell cacheado).
+if("serviceWorker" in navigator){
+  window.addEventListener("load",function(){
+    navigator.serviceWorker.register("sw.js").catch(function(e){ console.warn("SW no registrado:",e); });
+  });
+}
 </script>
 </body>
 </html>
