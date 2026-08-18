@@ -15,6 +15,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
   <style>
     *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
@@ -39,7 +40,7 @@ const firebaseConfig = {
   messagingSenderId: "492887022660",
   appId: "1:492887022660:web:eec0ebf6f5c213591fb011"
 };
-let fbApp=null, fbDb=null, fbInitError=null;
+let fbApp=null, fbDb=null, fbAuth=null, fbInitError=null;
 try{
   if(typeof firebase==="undefined") throw new Error("firebase SDK not loaded");
   fbApp=firebase.initializeApp(firebaseConfig);
@@ -47,6 +48,7 @@ try{
   // Persistencia offline: la crew puede usar la app sin wifi en los venues.
   // Los cambios se guardan en local y se sincronizan al recuperar conexión.
   try{ fbDb.enablePersistence({synchronizeTabs:true}).catch(function(){}); }catch(e){}
+  fbAuth=firebase.auth(); // login real por email/contraseña (la sesión se mantiene iniciada)
 }catch(e){ fbInitError=e.message||String(e); console.warn("Firebase init failed",e); }
 
 // useFirebaseStatus: tracks whether Firestore is connected/syncing
@@ -73,8 +75,10 @@ function useFirebaseStatus(){
 
 // useSyncedState: like useState, but persists to localStorage immediately
 // and syncs to/from Firestore in real time (collection "tourdesk", doc <key>, field "data").
-function useSyncedState(key,initial){
+function useSyncedState(key,initial,opts){
+  const sync=(!opts||opts.sync!==false); // sync:false → solo en memoria (sin localStorage ni Firestore)
   const [value,setValue]=React.useState(()=>{
+    if(!sync) return typeof initial==="function"?initial():initial;
     try{
       const saved=localStorage.getItem(key);
       if(saved){
@@ -92,12 +96,13 @@ function useSyncedState(key,initial){
 
   // Write to localStorage on every change
   React.useEffect(()=>{
+    if(!sync) return;
     try{ localStorage.setItem(key,JSON.stringify(value)); }catch(e){}
-  },[key,value]);
+  },[key,value,sync]);
 
   // Subscribe to Firestore changes (real-time)
   React.useEffect(()=>{
-    if(!fbDb) return;
+    if(!sync||!fbDb) return;
     const ref=fbDb.collection("tourdesk").doc(key);
     const unsub=ref.onSnapshot({includeMetadataChanges:false},function(snap){
       if(!snap.exists) return;
@@ -112,7 +117,7 @@ function useSyncedState(key,initial){
       setValue(remote);
     },function(err){ console.warn("Firestore sync error ("+key+")",err); });
     return unsub;
-  },[key]);
+  },[key,sync]);
 
   // Wrapped setter: updates local state AND pushes to Firestore
   const setSynced=React.useCallback(function(updater){
@@ -120,13 +125,13 @@ function useSyncedState(key,initial){
       const next=typeof updater==="function"?updater(prev):updater;
       const nextJson=JSON.stringify(next);
       lastWritten.current=nextJson;
-      if(fbDb){
+      if(sync&&fbDb){
         fbDb.collection("tourdesk").doc(key).set({data:next,updatedAt:Date.now()})
           .catch(function(err){ console.warn("Firestore write error ("+key+")",err); });
       }
       return next;
     });
-  },[key]);
+  },[key,sync]);
 
   return [value,setSynced];
 }
@@ -1248,12 +1253,23 @@ function ConflictsPanel({shows,conflicts,setShows}){
 }
 
 // ── MAIN APP ──────────────────────────────────────────────────
-// ── USERS & PINS
-const USERS={
-  "2512":{name:"Andrés Ortiz",    role:"admin",  memberId:"yo", initials:"YO",color:"#E03A38",bg:"#1a0a0a"},
-  "1234":{name:"Andrés Hernández",role:"worker", memberId:"w1", initials:"AH",color:"#185FA5",bg:"#E6F1FB"},
-  "1111":{name:"Miguel García",   role:"worker", memberId:"w2", initials:"MG",color:"#7C3AED",bg:"#EDE9FE"},
+// ── USUARIOS Y ROLES (login real por email/contraseña, sin PINs)
+// Cada cuenta de Firebase (email) → su rol y su ficha de equipo.
+// Los emails NO son secretos; la contraseña la guarda Firebase, nunca está aquí.
+// role: "admin"=acceso total · "socio"=todo menos Finanzas · "worker"=vista técnico.
+// finance:false oculta Y bloquea Finanzas para esa cuenta (Miguel es socio).
+const USERS_BY_EMAIL={
+  "andres@weareoffstage.com": {name:"Andrés Ortiz",  role:"admin", memberId:"yo", finance:true,  initials:"YO",color:"#E03A38",bg:"#1a0a0a"},
+  "allnightproducer@gmail.com": {name:"Miguel García", role:"socio", memberId:"w2", finance:false, initials:"MG",color:"#7C3AED",bg:"#EDE9FE"},
+  // Andrés Hernández (w1): sin cuenta por ahora — no trabaja actualmente con OffStage.
+  // Sus shows ya asignados siguen visibles; se pueden reasignar desde el panel.
 };
+function userForEmail(email){
+  if(!email) return null;
+  const lc=String(email).toLowerCase();
+  const k=Object.keys(USERS_BY_EMAIL).find(function(x){return x.toLowerCase()===lc;});
+  return k?USERS_BY_EMAIL[k]:null;
+}
 
 // ── STATE MANAGER (outside React) ──────────────────────────
 let _currentUser = null;
@@ -1369,71 +1385,38 @@ function WorkerView({user, shows, onLogout}){
 }
 
 // ── LOGIN
-function LoginScreen({onLogin}){
-  const [pin,setPin]=React.useState("");
-  const [error,setError]=React.useState(false);
+function LoginScreen(){
+  const [email,setEmail]=React.useState("");
+  const [pw,setPw]=React.useState("");
+  const [err,setErr]=React.useState("");
+  const [busy,setBusy]=React.useState(false);
 
-  const tryLogin=React.useCallback((p)=>{
-    if(USERS[p]){
-      setPin("");
-      setError(false);
-      onLogin(USERS[p]);
-    } else {
-      setError(true);
-      setTimeout(()=>{ setPin(""); setError(false); }, 800);
-    }
-  },[onLogin]);
-
-  const press=React.useCallback((d)=>{
-    setPin(prev=>{
-      if(prev.length>=5) return prev;
-      const next=prev+d;
-      // Auto-check at 4 digits (YO pin) or 5 digits
-      if(next.length===4 && USERS[next]){
-        setTimeout(()=>tryLogin(next),100);
-        return next;
-      }
-      if(next.length===5){
-        setTimeout(()=>tryLogin(next),100);
-        return next;
-      }
-      return next;
+  const submit=React.useCallback(()=>{
+    if(busy) return;
+    const e=email.trim();
+    if(!e||!pw){ setErr("Escribe tu email y contraseña."); return; }
+    if(!fbAuth){ setErr("Sin conexión con el servidor. Reintenta."); return; }
+    setBusy(true); setErr("");
+    fbAuth.signInWithEmailAndPassword(e,pw).catch(function(ex){
+      setBusy(false);
+      const c=(ex&&ex.code)||"";
+      if(c.indexOf("wrong-password")>=0||c.indexOf("invalid-credential")>=0||c.indexOf("user-not-found")>=0) setErr("Email o contraseña incorrectos.");
+      else if(c.indexOf("invalid-email")>=0) setErr("Ese email no es válido.");
+      else if(c.indexOf("too-many-requests")>=0) setErr("Demasiados intentos. Espera un momento.");
+      else if(c.indexOf("network")>=0) setErr("Sin conexión. Comprueba tu internet.");
+      else setErr("No se pudo entrar. Inténtalo de nuevo.");
     });
-    setError(false);
-  },[tryLogin]);
+    // Si va bien, onAuthStateChanged (en App) entra automáticamente.
+  },[email,pw,busy]);
 
-  const del=React.useCallback(()=>{ setPin(p=>p.slice(0,-1)); setError(false); },[]);
-
-  const maxLen=5;
-  const dots=Array.from({length:maxLen},(_,i)=>
-    React.createElement("div",{key:i,style:{
-      width:13,height:13,borderRadius:"50%",
-      background:i<pin.length?(error?"#ef4444":"#E03A38"):"#2a2a2a",
-      transition:"background .15s",
-      transform:error?"scale(1.2)":"scale(1)"
-    }})
-  );
-
-  const numBtn=(d)=>React.createElement("button",{
-    onClick:()=>press(String(d)),
-    style:{width:74,height:74,borderRadius:"50%",border:"1.5px solid #2a2a2a",background:"#1a1a1a",
-      fontSize:22,fontWeight:600,color:"#f0ebe4",cursor:"pointer",
-      display:"flex",alignItems:"center",justifyContent:"center",
-      boxShadow:"0 2px 8px rgba(0,0,0,.06)",WebkitTapHighlightColor:"transparent"}
-  },d);
-
-  const delBtn=React.createElement("button",{
-    onClick:del,
-    style:{width:74,height:74,borderRadius:"50%",border:"none",background:"transparent",
-      fontSize:22,color:"#666666",cursor:"pointer",WebkitTapHighlightColor:"transparent"}
-  },"⌫");
+  const inputStyle={width:"100%",padding:"13px 14px",borderRadius:11,border:"1.5px solid #2a2a2a",background:"#1a1a1a",color:"#f0ebe4",fontSize:15,outline:"none",fontFamily:"DM Sans,sans-serif"};
 
   return React.createElement("div",{style:{
     display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",
-    height:"100dvh",width:"100%",background:"#0a0a0a",padding:24,userSelect:"none"
+    height:"100dvh",width:"100%",background:"#0a0a0a",padding:24
   }},
-    React.createElement("div",{style:{marginBottom:32,textAlign:"center"}},
-      React.createElement("div",{style:{display:"flex",flexDirection:"column",alignItems:"flex-start",display:"inline-flex",flexDirection:"column"}},
+    React.createElement("div",{style:{marginBottom:30,textAlign:"center"}},
+      React.createElement("div",{style:{display:"inline-flex",flexDirection:"column",alignItems:"flex-start"}},
         React.createElement("div",{style:{width:8,height:8,borderRadius:"50%",background:"#E03A38",marginBottom:10,boxShadow:"0 0 12px rgba(224,58,56,.5)"}}),
         React.createElement("div",{style:{fontFamily:"Bebas Neue,sans-serif",fontSize:52,lineHeight:.82,letterSpacing:4,color:"#f0ebe4"}},"OFF"),
         React.createElement("div",{style:{fontFamily:"Bebas Neue,sans-serif",fontSize:52,lineHeight:.82,letterSpacing:4,WebkitTextStroke:"1.5px rgba(240,235,228,.2)",color:"transparent"}},"STAGE"),
@@ -1441,20 +1424,19 @@ function LoginScreen({onLogin}){
         React.createElement("div",{style:{fontSize:7,letterSpacing:3,textTransform:"uppercase",color:"rgba(240,235,228,.25)",fontFamily:"DM Sans,sans-serif"}},"Tour Production · Worldwide")
       )
     ),
-    React.createElement("div",{style:{fontSize:9,color:"#E03A38",marginBottom:40,letterSpacing:3,textTransform:"uppercase",fontFamily:"DM Sans,sans-serif"}},"Introduce tu PIN"),
-    React.createElement("div",{style:{display:"flex",gap:16,marginBottom:12}},dots),
-    React.createElement("div",{style:{fontSize:12,color:"#ef4444",fontWeight:600,height:20,marginBottom:24}},error?"PIN incorrecto":""),
-    React.createElement("div",{style:{display:"grid",gridTemplateColumns:"repeat(3,74px)",gap:14}},
-      numBtn(1),numBtn(2),numBtn(3),
-      numBtn(4),numBtn(5),numBtn(6),
-      numBtn(7),numBtn(8),numBtn(9),
-      React.createElement("div"),numBtn(0),delBtn
+    React.createElement("div",{style:{fontSize:9,color:"#E03A38",marginBottom:22,letterSpacing:3,textTransform:"uppercase",fontFamily:"DM Sans,sans-serif"}},"Inicia sesión"),
+    React.createElement("form",{onSubmit:function(ev){ev.preventDefault();submit();},style:{width:"100%",maxWidth:320,display:"flex",flexDirection:"column",gap:11}},
+      React.createElement("input",{type:"email",inputMode:"email",autoCapitalize:"none",autoCorrect:"off",autoComplete:"username",value:email,onChange:function(e){setEmail(e.target.value);setErr("");},placeholder:"Email",style:inputStyle}),
+      React.createElement("input",{type:"password",autoComplete:"current-password",value:pw,onChange:function(e){setPw(e.target.value);setErr("");},placeholder:"Contraseña",style:inputStyle}),
+      React.createElement("div",{style:{fontSize:12,color:"#ef4444",fontWeight:600,minHeight:16,textAlign:"center"}},err),
+      React.createElement("button",{type:"submit",disabled:busy,style:{width:"100%",padding:"14px",borderRadius:11,border:"none",background:busy?"#3a1414":"#E03A38",color:"#fff",fontWeight:700,fontSize:15,cursor:busy?"default":"pointer"}},busy?"Entrando…":"Entrar")
     )
   );
 }
 
 // ── ADMIN APP
 function AdminApp({user, onLogout}){
+  const canFinance=(user&&user.finance!==false); // false para un socio (Miguel): oculta y NO descarga finanzas
   const [syncStatus,syncError]=useFirebaseStatus();
   const [dark,setDark]=React.useState(()=>localStorage.getItem("td_dark")==="1");
   React.useEffect(()=>{
@@ -1472,7 +1454,7 @@ function AdminApp({user, onLogout}){
   const [finances,setFinances]=useSyncedState("td_finances",()=>{
     if(Array.isArray(INITIAL_FINANCES)) return INITIAL_FINANCES;
     return [];
-  });
+  },{sync:canFinance});
   const [customArtists,setCustomArtists]=useSyncedState("td_artists",{});
   applyCustomArtists(customArtists); // reconstruye ARTISTS/SHOW_RATES antes de renderizar hijos
   const addArtist=React.useCallback(function(key,data){
@@ -1490,7 +1472,7 @@ function AdminApp({user, onLogout}){
     return ids;
   },[shows]);
   const confDays=[...new Set(shows.filter(s=>conflicts.has(s.id)).map(s=>s.date))].length;
-  const TABS=[{id:"shows",l:"📋"},{id:"conflicts",l:"⚡"+confDays},{id:"marketing",l:"📣"},{id:"office",l:"🏢"},{id:"material",l:"📦"},{id:"finance",l:"💰"},{id:"stats",l:"📊"}];
+  const TABS=[{id:"shows",l:"📋"},{id:"conflicts",l:"⚡"+confDays},{id:"marketing",l:"📣"},{id:"office",l:"🏢"},{id:"material",l:"📦"}].concat(canFinance?[{id:"finance",l:"💰"}]:[]).concat([{id:"stats",l:"📊"}]);
   const hdr="#111"; const tbar=dark?"#111":"#fff"; const tbdr=dark?"#2a2a2a":"#f3f4f6";
   return React.createElement("div",{style:{display:"flex",flexDirection:"column",height:"100dvh",width:"100%",background:dark?"#050505":"#0d0d0d"}},
     React.createElement("div",{style:{background:hdr,padding:"12px 15px",display:"flex",alignItems:"center",gap:10,paddingTop:"max(12px,env(safe-area-inset-top))"}},
@@ -1514,7 +1496,7 @@ function AdminApp({user, onLogout}){
     tab==="marketing"&&React.createElement(MktgPanel),
     tab==="office"&&React.createElement(OfficePanel),
     tab==="material"&&React.createElement(MaterialPanel,{cases,setCases}),
-    tab==="finance"&&React.createElement(FinancePanel,{finances,setFinances,shows}),
+    tab==="finance"&&canFinance&&React.createElement(FinancePanel,{finances,setFinances,shows}),
     tab==="stats"&&React.createElement(StatsPanel,{shows,conflicts})
   );
 }
@@ -1532,12 +1514,29 @@ function WorkerApp({user, onLogout}){
 
 // ── ROOT
 function App(){
-  const [user,setUser]=React.useState(null);
-  const login=React.useCallback((u)=>{ setUser(u); },[]);
-  const logout=React.useCallback(()=>{ setUser(null); },[]);
-  if(!user) return React.createElement(LoginScreen,{onLogin:login});
-  if(user.role==="worker") return React.createElement(WorkerApp,{user,onLogout:logout});
-  return React.createElement(AdminApp,{user,onLogout:logout});
+  const [authUser,setAuthUser]=React.useState(undefined); // undefined=cargando sesión · null=sin sesión
+  React.useEffect(function(){
+    if(!fbAuth){ setAuthUser(null); return; }
+    return fbAuth.onAuthStateChanged(function(u){ setAuthUser(u||null); });
+  },[]);
+  const logout=React.useCallback(function(){ if(fbAuth) fbAuth.signOut(); },[]);
+
+  if(authUser===undefined){
+    return React.createElement("div",{style:{height:"100dvh",display:"flex",alignItems:"center",justifyContent:"center",background:"#0a0a0a"}},React.createElement("div",{className:"spinner"}));
+  }
+  if(!authUser) return React.createElement(LoginScreen);
+
+  const profile=userForEmail(authUser.email);
+  if(!profile){
+    return React.createElement("div",{style:{height:"100dvh",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:14,background:"#0a0a0a",color:"#f0ebe4",padding:28,textAlign:"center",fontFamily:"DM Sans,system-ui,sans-serif"}},
+      React.createElement("div",{style:{fontSize:32}},"🔒"),
+      React.createElement("div",{style:{fontSize:15,fontWeight:700}},"Cuenta sin acceso"),
+      React.createElement("div",{style:{fontSize:12,color:"#888",maxWidth:280,lineHeight:1.5}},"La cuenta "+(authUser.email||"")+" no está dada de alta en TourDesk. Pídele acceso a Andrés."),
+      React.createElement("button",{onClick:logout,style:{marginTop:6,padding:"11px 22px",borderRadius:10,border:"1px solid #2a2a2a",background:"#1a1a1a",color:"#f0ebe4",fontWeight:600,fontSize:13,cursor:"pointer"}},"Salir")
+    );
+  }
+  if(profile.role==="worker") return React.createElement(WorkerApp,{user:profile,onLogout:logout});
+  return React.createElement(AdminApp,{user:profile,onLogout:logout});
 }
 
 // ── ERROR BOUNDARY ────────────────────────────────────────────

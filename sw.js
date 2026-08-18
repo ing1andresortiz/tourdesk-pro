@@ -1,7 +1,7 @@
 /* TourDesk Pro — Service Worker
    App shell offline + assets cacheados. Los datos en vivo (Firestore) NO se
    interceptan: el SDK de Firestore gestiona su propio offline (IndexedDB). */
-const CACHE = 'tourdesk-v1';
+const CACHE = 'tourdesk-v2';
 
 const SHELL = [
   './',
@@ -15,6 +15,7 @@ const SHELL = [
   'https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js',
   'https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js',
   'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js',
+  'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js',
   'https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap'
 ];
 
