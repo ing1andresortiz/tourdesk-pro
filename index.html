@@ -934,9 +934,12 @@ function CaseModal({caseData,onClose,onSave,onDelete}){
 }
 
 // ── FINANCE PANEL ─────────────────────────────────────────────
-function FinancePanel({finances,setFinances,shows}){
+function FinancePanel({finances,setFinances,shows,workers,setWorkers}){
   const [editing,setEditing]=React.useState(null);
   const [filter,setFilter]=React.useState("all");
+  const [nwName,setNwName]=React.useState("");
+  const [nwRate,setNwRate]=React.useState("");
+  const workerList=Array.isArray(workers)?workers:[];
 
   const income=finances.filter(f=>f.type==="income");
   const expense=finances.filter(f=>f.type==="expense");
@@ -944,19 +947,24 @@ function FinancePanel({finances,setFinances,shows}){
   const totalExpense=expense.reduce((s,f)=>s+f.amount,0);
   const net=totalIncome-totalExpense;
 
-  // ── Reparto del equipo ──
-  // Los pagos al equipo se guardan como gastos con kind "crew_<id>".
-  const isCrewPay=function(f){ return f.type==="expense"&&typeof f.kind==="string"&&f.kind.indexOf("crew_")===0; };
-  const crewPays=finances.filter(isCrewPay);
-  const totalCrew=crewPays.reduce(function(s,f){return s+f.amount;},0);
-  const yourShare=totalIncome-totalCrew; // lo que te queda de los shows tras pagar al equipo
-  const crewEarnings=TEAM.filter(function(m){return m.id!=="yo";}).map(function(m){
-    const paid=crewPays.filter(function(f){return f.kind==="crew_"+m.id;});
-    const total=paid.reduce(function(s,f){return s+f.amount;},0);
-    const rate=CREW_RATES[m.id]||0;
-    const owed=shows.filter(function(s){return s.assigned.indexOf(m.id)>=0&&(isPast(s.date)||isToday(s.date))&&!finances.some(function(f){return f.showId===s.id&&f.kind==="crew_"+m.id;});});
-    return {m:m,total:total,count:paid.length,pending:owed.length*rate,pendingCount:owed.length};
-  });
+  // ── Pagos a trabajadores ──
+  // Se guardan como gastos con kind "worker_<id>" (o el histórico "crew_<id>").
+  const isPeoplePay=function(f){ return f.type==="expense"&&typeof f.kind==="string"&&(f.kind.indexOf("worker_")===0||f.kind.indexOf("crew_")===0); };
+  const totalPeople=finances.filter(isPeoplePay).reduce(function(s,f){return s+f.amount;},0);
+  const yourShare=totalIncome-totalPeople; // lo que te queda tras pagar a los trabajadores
+  const workerPaid=function(id){ return finances.filter(function(f){return f.kind==="worker_"+id;}).reduce(function(s,f){return s+f.amount;},0); };
+
+  const addWorker=function(){
+    const nm=nwName.trim(); if(!nm||!setWorkers) return;
+    const pal=ARTIST_PALETTE[workerList.length%ARTIST_PALETTE.length];
+    const parts=nm.split(/\s+/).filter(Boolean);
+    const initials=((parts.length>1?(parts[0][0]+parts[1][0]):nm.slice(0,2))||"?").toUpperCase();
+    const w={id:"w"+Date.now(),name:nm,rate:Number(nwRate)||0,initials:initials,color:pal[0],bg:pal[1]};
+    setWorkers(function(p){return [...(Array.isArray(p)?p:[]),w];});
+    setNwName(""); setNwRate("");
+  };
+  const updateWorkerRate=function(id,val){ if(!setWorkers) return; setWorkers(function(p){return (Array.isArray(p)?p:[]).map(function(w){return w.id===id?{...w,rate:Number(val)||0}:w;});}); };
+  const removeWorker=function(id,name){ if(!setWorkers) return; if(window.confirm("¿Quitar a "+name+" de la lista? Sus pagos ya registrados no se borran.")){ setWorkers(function(p){return (Array.isArray(p)?p:[]).filter(function(w){return w.id!==id;});}); } };
 
   const filtered=finances.filter(f=>filter==="all"||f.type===filter)
     .sort((a,b)=>b.date.localeCompare(a.date));
@@ -990,34 +998,42 @@ function FinancePanel({finances,setFinances,shows}){
       React.createElement("div",{style:{fontSize:24,fontWeight:800,color:net>=0?"#16a34a":"#ef4444"}},(net>=0?"+":"")+fmtMoney(net))
     ),
 
-    // Reparto del equipo + tu parte (después de pagar al equipo)
+    // ── Trabajadores: añadir a quién pagas + su caché, y ver lo que te queda ──
     React.createElement("div",{style:{background:"#111111",borderRadius:11,padding:"13px 15px",border:"1px solid #1e1e1e",marginBottom:13}},
-      React.createElement("div",{style:{fontSize:10,fontWeight:700,color:"#555555",textTransform:"uppercase",letterSpacing:1,marginBottom:12}},"👥 Lo que ha ganado el equipo"),
-      crewEarnings.map(function(ce){
-        return React.createElement("div",{key:ce.m.id,style:{display:"flex",alignItems:"center",gap:10,marginBottom:11}},
-          React.createElement(Av,{m:ce.m,sz:30}),
+      React.createElement("div",{style:{fontSize:10,fontWeight:700,color:"#555555",textTransform:"uppercase",letterSpacing:1,marginBottom:4}},"👷 Trabajadores — sus pagos"),
+      React.createElement("div",{style:{fontSize:10,color:"#555",marginBottom:12}},"Añade a quién pagas y su caché por show. Márcalos como pagados en el Registro rápido de cada show."),
+      workerList.length===0&&React.createElement("div",{style:{fontSize:12,color:"#666",padding:"2px 0 12px"}},"Aún no hay trabajadores. Añade el primero abajo 👇"),
+      workerList.map(function(w){
+        return React.createElement("div",{key:w.id,style:{display:"flex",alignItems:"center",gap:9,marginBottom:9}},
+          React.createElement(Av,{m:w,sz:30}),
           React.createElement("div",{style:{flex:1,minWidth:0}},
-            React.createElement("div",{style:{fontSize:13,fontWeight:600,color:"#f0ebe4"}},ce.m.name),
-            React.createElement("div",{style:{fontSize:10,color:"#555"}},ce.count+(ce.count===1?" show pagado":" shows pagados")+(ce.pending>0?" · le debes "+fmtMoney(ce.pending):""))
+            React.createElement("div",{style:{fontSize:13,fontWeight:600,color:"#f0ebe4",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},w.name),
+            React.createElement("div",{style:{fontSize:10,color:"#555"}},"Pagado: "+fmtMoney(workerPaid(w.id)))
           ),
-          React.createElement("div",{style:{textAlign:"right",flexShrink:0}},
-            React.createElement("div",{style:{fontSize:16,fontWeight:800,color:ce.m.color}},fmtMoney(ce.total)),
-            ce.pending>0&&React.createElement("div",{style:{fontSize:10,fontWeight:700,color:"#d97706"}},ce.pendingCount+" pend.")
-          )
+          React.createElement("div",{style:{display:"flex",alignItems:"center",gap:2,background:"#1a1a1a",border:"1px solid #2a2a2a",borderRadius:8,padding:"3px 8px"}},
+            React.createElement("input",{type:"number",min:0,value:w.rate,onChange:function(e){updateWorkerRate(w.id,e.target.value);},style:{width:48,background:"transparent",border:"none",color:"#f0ebe4",fontSize:13,fontWeight:700,outline:"none",textAlign:"right",fontFamily:"DM Sans,sans-serif"}}),
+            React.createElement("span",{style:{fontSize:12,color:"#888"}},"€")
+          ),
+          React.createElement("button",{onClick:function(){removeWorker(w.id,w.name);},style:{background:"none",border:"none",color:"#8a4a4a",fontSize:17,cursor:"pointer",padding:"0 2px"}},"×")
         );
       }),
-      React.createElement("div",{style:{height:1,background:"#1e1e1e",margin:"5px 0 11px"}}),
+      React.createElement("div",{style:{display:"flex",gap:6,marginTop:4,marginBottom:12}},
+        React.createElement("input",{value:nwName,onChange:function(e){setNwName(e.target.value);},placeholder:"Nombre del trabajador",style:{flex:1,minWidth:0,padding:"9px 10px",borderRadius:8,border:"1px solid #2a2a2a",background:"#1a1a1a",color:"#f0ebe4",fontSize:13,fontFamily:"DM Sans,sans-serif"}}),
+        React.createElement("input",{type:"number",min:0,value:nwRate,onChange:function(e){setNwRate(e.target.value);},placeholder:"€/show",style:{width:74,padding:"9px 8px",borderRadius:8,border:"1px solid #2a2a2a",background:"#1a1a1a",color:"#f0ebe4",fontSize:13,textAlign:"center",fontFamily:"DM Sans,sans-serif"}}),
+        React.createElement("button",{disabled:!nwName.trim(),onClick:addWorker,style:{padding:"0 15px",borderRadius:8,border:"none",background:!nwName.trim()?"#3a1414":"#E03A38",color:"#fff",fontWeight:700,fontSize:18,cursor:!nwName.trim()?"default":"pointer",opacity:!nwName.trim()?.6:1}},"+")
+      ),
+      React.createElement("div",{style:{height:1,background:"#1e1e1e",margin:"3px 0 11px"}}),
       React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between"}},
         React.createElement("div",null,
-          React.createElement("div",{style:{fontSize:13,fontWeight:700,color:"#f0ebe4"}},"Tu parte"),
-          React.createElement("div",{style:{fontSize:10,color:"#555"}},"Ingresos − pagos al equipo")
+          React.createElement("div",{style:{fontSize:13,fontWeight:700,color:"#f0ebe4"}},"Lo que te queda"),
+          React.createElement("div",{style:{fontSize:10,color:"#555"}},"Ingresos − pagos a trabajadores")
         ),
         React.createElement("div",{style:{fontSize:22,fontWeight:800,color:yourShare>=0?"#16a34a":"#ef4444"}},(yourShare>=0?"+":"")+fmtMoney(yourShare))
       )
     ),
 
     // Quick log from shows
-    React.createElement(QuickLogShows,{shows,finances,setFinances}),
+    React.createElement(QuickLogShows,{shows,finances,setFinances,workers}),
 
     // New entry button
     React.createElement("div",{style:{display:"flex",gap:8,marginBottom:13}},
@@ -1071,10 +1087,11 @@ function FinancePanel({finances,setFinances,shows}){
 
 
 // ── QUICK LOG FROM SHOWS ──────────────────────────────────────
-function QuickLogShows({shows,finances,setFinances}){
+function QuickLogShows({shows,finances,setFinances,workers}){
   const [open,setOpen]=React.useState(false);
   const [fa,setFa]=React.useState("all");
   const today=new Date().toISOString().slice(0,10);
+  const workerList=Array.isArray(workers)?workers:[];
 
   // TODOS los shows (para poder registrar cobros y pagos de todo el tour), en
   // orden cronológico y filtrables por artista.
@@ -1096,12 +1113,9 @@ function QuickLogShows({shows,finances,setFinances}){
     setFinances(p=>[...p,{id:Date.now(),type:"income",date:s.date,concept,amount,artist:s.artist,showId:s.id,kind:"income"}]);
   };
 
-  const logCrewPay=(s,memberId)=>{
-    const rate=CREW_RATES[memberId];
-    if(!rate)return;
-    const member=TEAM.find(m=>m.id===memberId);
-    const concept="Pago "+member.name+" — "+ARTISTS[s.artist].name+" "+s.city;
-    setFinances(p=>[...p,{id:Date.now()+Math.random(),type:"expense",date:s.date,concept,amount:rate,artist:s.artist,showId:s.id,kind:"crew_"+memberId}]);
+  const logWorkerPay=(s,w)=>{
+    const concept="Pago "+w.name+" — "+ARTISTS[s.artist].name+" "+s.city;
+    setFinances(p=>[...p,{id:Date.now()+Math.random(),type:"expense",date:s.date,concept,amount:Number(w.rate)||0,artist:s.artist,showId:s.id,kind:"worker_"+w.id}]);
   };
 
   if(shows.length===0) return null;
@@ -1123,7 +1137,6 @@ function QuickLogShows({shows,finances,setFinances}){
       relevant.map(s=>{
         const r=SHOW_RATES[s.artist];
         const incomeDone=alreadyLogged(s.id,"income");
-        const crewAssigned=s.assigned.filter(a=>a!=="yo"&&CREW_RATES[a]);
         return React.createElement("div",{key:s.id,style:{padding:"9px 0",borderBottom:"1px solid #1a1a1a"}},
           React.createElement("div",{style:{display:"flex",alignItems:"center",gap:7,marginBottom:7}},
             React.createElement("span",{style:{fontSize:11,fontWeight:700,color:"#888",minWidth:42}},fmtDate(s.date)),
@@ -1134,11 +1147,10 @@ function QuickLogShows({shows,finances,setFinances}){
             r&&React.createElement("button",{disabled:incomeDone,onClick:()=>logIncome(s),style:{padding:"6px 11px",borderRadius:8,border:incomeDone?"1px solid #1a3a1a":"1px solid #1a3a1a",background:incomeDone?"#0d150d":"#0a1a0a",color:incomeDone?"#3a6a3a":"#16a34a",fontWeight:700,fontSize:11,cursor:incomeDone?"default":"pointer"}},
               incomeDone?"✓ Ingreso registrado":"+ Ingreso ("+(r.fee+r.rental)+"€)"
             ),
-            crewAssigned.map(memberId=>{
-              const member=TEAM.find(m=>m.id===memberId);
-              const done=alreadyLogged(s.id,"crew_"+memberId);
-              return React.createElement("button",{key:memberId,disabled:done,onClick:()=>logCrewPay(s,memberId),style:{padding:"6px 11px",borderRadius:8,border:done?"1px solid #2a1414":"1px solid #2a1414",background:done?"#150a0a":"#1a0808",color:done?"#5a2a2a":"#E03A38",fontWeight:700,fontSize:11,cursor:done?"default":"pointer"}},
-                done?"✓ "+member.initials+" pagado":"− Pago "+member.initials+" ("+CREW_RATES[memberId]+"€)"
+            workerList.map(function(w){
+              const done=alreadyLogged(s.id,"worker_"+w.id);
+              return React.createElement("button",{key:w.id,disabled:done,onClick:function(){logWorkerPay(s,w);},style:{padding:"6px 11px",borderRadius:8,border:"1px solid #2a1414",background:done?"#150a0a":"#1a0808",color:done?"#5a2a2a":"#E03A38",fontWeight:700,fontSize:11,cursor:done?"default":"pointer"}},
+                done?"✓ "+w.initials+" pagado":"− Pago "+w.initials+" ("+(Number(w.rate)||0)+"€)"
               );
             })
           )
@@ -1455,6 +1467,8 @@ function AdminApp({user, onLogout}){
     if(Array.isArray(INITIAL_FINANCES)) return INITIAL_FINANCES;
     return [];
   },{sync:canFinance});
+  // Trabajadores para nómina (solo admin; privado, ni Miguel lo descarga).
+  const [workers,setWorkers]=useSyncedState("td_workers",[],{sync:canFinance});
   const [customArtists,setCustomArtists]=useSyncedState("td_artists",{});
   applyCustomArtists(customArtists); // reconstruye ARTISTS/SHOW_RATES antes de renderizar hijos
   const addArtist=React.useCallback(function(key,data){
@@ -1496,7 +1510,7 @@ function AdminApp({user, onLogout}){
     tab==="marketing"&&React.createElement(MktgPanel),
     tab==="office"&&React.createElement(OfficePanel),
     tab==="material"&&React.createElement(MaterialPanel,{cases,setCases}),
-    tab==="finance"&&canFinance&&React.createElement(FinancePanel,{finances,setFinances,shows}),
+    tab==="finance"&&canFinance&&React.createElement(FinancePanel,{finances,setFinances,shows,workers,setWorkers}),
     tab==="stats"&&React.createElement(StatsPanel,{shows,conflicts})
   );
 }
