@@ -16,6 +16,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
   <style>
     *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
@@ -40,7 +41,7 @@ const firebaseConfig = {
   messagingSenderId: "492887022660",
   appId: "1:492887022660:web:eec0ebf6f5c213591fb011"
 };
-let fbApp=null, fbDb=null, fbAuth=null, fbInitError=null;
+let fbApp=null, fbDb=null, fbAuth=null, fbStorage=null, fbInitError=null;
 try{
   if(typeof firebase==="undefined") throw new Error("firebase SDK not loaded");
   fbApp=firebase.initializeApp(firebaseConfig);
@@ -49,6 +50,7 @@ try{
   // Los cambios se guardan en local y se sincronizan al recuperar conexión.
   try{ fbDb.enablePersistence({synchronizeTabs:true}).catch(function(){}); }catch(e){}
   fbAuth=firebase.auth(); // login real por email/contraseña (la sesión se mantiene iniciada)
+  try{ fbStorage=firebase.storage(); }catch(e){} // archivos (PDFs/planos) en almacenamiento real
 }catch(e){ fbInitError=e.message||String(e); console.warn("Firebase init failed",e); }
 
 // useFirebaseStatus: tracks whether Firestore is connected/syncing
@@ -137,11 +139,23 @@ function useSyncedState(key,initial,opts){
 }
 
 // ── DATA ──────────────────────────────────────────────────────
-const TEAM=[
+const BASE_TEAM=[
   {id:"yo",name:"Yo (FOH)",        initials:"YO",color:"#E03A38",bg:"#1a0a0a"},
   {id:"w1",name:"Andrés Hernández",initials:"AH",color:"#185FA5",bg:"#E6F1FB"},
   {id:"w2",name:"Miguel García",   initials:"MG",color:"#7C3AED",bg:"#EDE9FE"},
 ];
+// TEAM = base + trabajadores que añada el usuario. Se guarda su IDENTIDAD
+// (sin tarifas) en el estado compartido "td_team" para poder asignarlos a
+// shows; las tarifas viven aparte en "td_workers" (privado, solo admin).
+// Se reconstruye en cada render con applyCustomTeam().
+let TEAM=BASE_TEAM.slice();
+function applyCustomTeam(custom){
+  const arr=BASE_TEAM.slice();
+  if(Array.isArray(custom)) custom.forEach(function(m){
+    if(m&&m.id&&!arr.some(function(x){return x.id===m.id;})) arr.push({id:m.id,name:m.name,initials:m.initials,color:m.color,bg:m.bg});
+  });
+  TEAM=arr;
+}
 const BASE_ARTISTS={
   luar: {name:"Luar La L",color:"#E03A38",bg:"#1a0a0a",short:"LL"},
   beele:{name:"Beele",    color:"#0F6E56",bg:"#E1F5EE",short:"BE"},
@@ -410,41 +424,31 @@ function AssignModal({show,onClose,onSave,onDelete,onAddArtist,onRemoveArtist,cu
     setAddingArtist(false); setNaName(""); setNaShort(""); setNaFee(""); setNaCol(0);
   };
 
-  // Los archivos se guardan (por ahora) dentro del documento de Firestore, que
-  // tiene un límite de ~1MB. Para no romper la sincronización: las imágenes se
-  // comprimen automáticamente y los demás archivos se bloquean si son grandes.
-  // (La versión con almacenamiento real de Firebase eliminará este límite.)
-  const MAX_FILE=650*1024;
+  // Los archivos se suben a Firebase Storage y en el show solo guardamos la URL
+  // (metadato ligero), así que ya no hay límite de tamaño ni riesgo para la sync.
+  const [uploading,setUploading]=React.useState(false);
+  const MAX_FILE=25*1024*1024; // 25 MB por archivo
   const handleFile=e=>{
     const f=e.target.files[0]; if(!f)return;
     e.target.value=""; // permite volver a elegir el mismo archivo
-    const add=(dataUrl,approxSize)=>setFiles(prev=>[...prev,{name:f.name,size:approxSize||f.size,type:f.type,data:dataUrl,uploaded:new Date().toLocaleDateString("es-ES")}]);
-    if(f.type&&f.type.indexOf("image/")===0){
-      const reader=new FileReader();
-      reader.onload=ev=>{
-        const img=new Image();
-        img.onload=()=>{
-          let w=img.width,h=img.height,max=1600;
-          if(w>max||h>max){const r=Math.min(max/w,max/h);w=Math.round(w*r);h=Math.round(h*r);}
-          const cv=document.createElement("canvas");cv.width=w;cv.height=h;
-          cv.getContext("2d").drawImage(img,0,0,w,h);
-          let q=0.85,out=cv.toDataURL("image/jpeg",q);
-          while(out.length>MAX_FILE&&q>0.4){q-=0.15;out=cv.toDataURL("image/jpeg",q);}
-          if(out.length>MAX_FILE){alert("La imagen sigue siendo muy pesada tras comprimir. Sube una versión más ligera (pronto habrá almacenamiento real sin este límite).");return;}
-          add(out,Math.round(out.length*0.75));
-        };
-        img.onerror=()=>alert("No se pudo procesar la imagen.");
-        img.src=ev.target.result;
-      };
-      reader.readAsDataURL(f);
-    }else{
-      if(f.size>MAX_FILE){alert("\""+f.name+"\" pesa "+Math.round(f.size/1024)+" KB y supera el límite temporal de "+Math.round(MAX_FILE/1024)+" KB (los archivos se guardan dentro de la base de datos). Sube una versión más ligera; la próxima versión con almacenamiento real permitirá archivos grandes.");return;}
-      const reader=new FileReader();
-      reader.onload=ev=>add(ev.target.result,f.size);
-      reader.readAsDataURL(f);
-    }
+    if(f.size>MAX_FILE){ alert("\""+f.name+"\" pesa "+Math.round(f.size/1024/1024)+" MB y supera el máximo de 25 MB."); return; }
+    if(!fbStorage){ alert("El almacenamiento no está disponible ahora mismo. Comprueba tu conexión e inténtalo de nuevo."); return; }
+    setUploading(true);
+    const safe=(f.name||"archivo").replace(/[^\w.\-]+/g,"_");
+    const path="tourdesk/shows/"+(show.id||"nuevo")+"/"+Date.now()+"_"+safe;
+    fbStorage.ref(path).put(f).then(function(snap){ return snap.ref.getDownloadURL(); }).then(function(url){
+      setFiles(prev=>[...prev,{name:f.name,size:f.size,type:f.type,url:url,path:path,uploaded:new Date().toLocaleDateString("es-ES")}]);
+      setUploading(false);
+    }).catch(function(err){
+      setUploading(false);
+      alert("No se pudo subir el archivo ("+(err&&err.code||err&&err.message||"error")+"). Si acabas de activar Storage, espera un minuto y reintenta.");
+    });
   };
-  const removeFile=i=>setFiles(prev=>prev.filter((_,idx)=>idx!==i));
+  const removeFile=i=>setFiles(prev=>{
+    const f=prev[i];
+    if(f&&f.path&&fbStorage){ try{ fbStorage.ref(f.path).delete().catch(function(){}); }catch(e){} }
+    return prev.filter((_,idx)=>idx!==i);
+  });
 
   const label=(txt)=>React.createElement("div",{style:{fontSize:10,fontWeight:700,color:"#555555",textTransform:"uppercase",letterSpacing:1,margin:"12px 0 7px"}},txt);
   const timeInput=(val,set,ph)=>React.createElement("input",{type:"time",value:val,onChange:e=>set(e.target.value),style:{width:"100%",padding:"8px 11px",borderRadius:9,border:"1.5px solid #222",fontSize:14,outline:"none",background:"#0d0d0d",color:"#f0ebe4",marginBottom:4}});
@@ -535,13 +539,13 @@ function AssignModal({show,onClose,onSave,onDelete,onAddArtist,onRemoveArtist,cu
           React.createElement("div",{style:{fontSize:12,fontWeight:600,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},f.name),
           React.createElement("div",{style:{fontSize:9,color:"#E03A38",letterSpacing:2,textTransform:"uppercase"}},f.uploaded)
         ),
-        React.createElement("a",{href:f.data,download:f.name,style:{fontSize:11,color:"#185FA5",fontWeight:600,textDecoration:"none",padding:"3px 8px",background:"#E6F1FB",borderRadius:6}},"↓"),
+        React.createElement("a",{href:f.url||f.data,download:f.name,style:{fontSize:11,color:"#185FA5",fontWeight:600,textDecoration:"none",padding:"3px 8px",background:"#E6F1FB",borderRadius:6}},"↓"),
         React.createElement("button",{onClick:()=>removeFile(i),style:{background:"none",border:"none",color:"#555555",cursor:"pointer",fontSize:16}},"×")
       )),
       React.createElement("label",{style:{display:"flex",alignItems:"center",gap:8,padding:"8px 11px",background:"#f9fafb",border:"2px dashed #e5e7eb",borderRadius:9,cursor:"pointer",marginBottom:12}},
         React.createElement("span",{style:{fontSize:16}},"📎"),
-        React.createElement("span",{style:{fontSize:12,color:"#666666"}},"Subir archivo (PDF, imagen, documento)"),
-        React.createElement("input",{type:"file",accept:"*/*",onChange:handleFile,style:{display:"none"}})
+        React.createElement("span",{style:{fontSize:12,color:"#666666"}},uploading?"Subiendo…":"Subir archivo (PDF, imagen, documento)"),
+        React.createElement("input",{type:"file",accept:"*/*",onChange:handleFile,disabled:uploading,style:{display:"none"}})
       ),
 
       !venue.trim()&&React.createElement("div",{style:{fontSize:11,color:"#E03A38",marginBottom:10,textAlign:"center"}},"Falta el nombre del venue"),
@@ -934,7 +938,7 @@ function CaseModal({caseData,onClose,onSave,onDelete}){
 }
 
 // ── FINANCE PANEL ─────────────────────────────────────────────
-function FinancePanel({finances,setFinances,shows,workers,setWorkers}){
+function FinancePanel({finances,setFinances,shows,workers,setWorkers,setTeam}){
   const [editing,setEditing]=React.useState(null);
   const [filter,setFilter]=React.useState("all");
   const [nwName,setNwName]=React.useState("");
@@ -961,10 +965,11 @@ function FinancePanel({finances,setFinances,shows,workers,setWorkers}){
     const initials=((parts.length>1?(parts[0][0]+parts[1][0]):nm.slice(0,2))||"?").toUpperCase();
     const w={id:"w"+Date.now(),name:nm,rate:Number(nwRate)||0,initials:initials,color:pal[0],bg:pal[1]};
     setWorkers(function(p){return [...(Array.isArray(p)?p:[]),w];});
+    if(setTeam) setTeam(function(p){return [...(Array.isArray(p)?p:[]),{id:w.id,name:w.name,initials:w.initials,color:w.color,bg:w.bg}];});
     setNwName(""); setNwRate("");
   };
   const updateWorkerRate=function(id,val){ if(!setWorkers) return; setWorkers(function(p){return (Array.isArray(p)?p:[]).map(function(w){return w.id===id?{...w,rate:Number(val)||0}:w;});}); };
-  const removeWorker=function(id,name){ if(!setWorkers) return; if(window.confirm("¿Quitar a "+name+" de la lista? Sus pagos ya registrados no se borran.")){ setWorkers(function(p){return (Array.isArray(p)?p:[]).filter(function(w){return w.id!==id;});}); } };
+  const removeWorker=function(id,name){ if(!setWorkers) return; if(window.confirm("¿Quitar a "+name+" de la lista? Sus pagos ya registrados no se borran, y sus asignaciones en shows se mantienen.")){ setWorkers(function(p){return (Array.isArray(p)?p:[]).filter(function(w){return w.id!==id;});}); if(setTeam) setTeam(function(p){return (Array.isArray(p)?p:[]).filter(function(m){return m.id!==id;});}); } };
 
   const filtered=finances.filter(f=>filter==="all"||f.type===filter)
     .sort((a,b)=>b.date.localeCompare(a.date));
@@ -1147,7 +1152,7 @@ function QuickLogShows({shows,finances,setFinances,workers}){
             r&&React.createElement("button",{disabled:incomeDone,onClick:()=>logIncome(s),style:{padding:"6px 11px",borderRadius:8,border:incomeDone?"1px solid #1a3a1a":"1px solid #1a3a1a",background:incomeDone?"#0d150d":"#0a1a0a",color:incomeDone?"#3a6a3a":"#16a34a",fontWeight:700,fontSize:11,cursor:incomeDone?"default":"pointer"}},
               incomeDone?"✓ Ingreso registrado":"+ Ingreso ("+(r.fee+r.rental)+"€)"
             ),
-            workerList.map(function(w){
+            workerList.filter(function(w){return s.assigned&&s.assigned.indexOf(w.id)>=0;}).map(function(w){
               const done=alreadyLogged(s.id,"worker_"+w.id);
               return React.createElement("button",{key:w.id,disabled:done,onClick:function(){logWorkerPay(s,w);},style:{padding:"6px 11px",borderRadius:8,border:"1px solid #2a1414",background:done?"#150a0a":"#1a0808",color:done?"#5a2a2a":"#E03A38",fontWeight:700,fontSize:11,cursor:done?"default":"pointer"}},
                 done?"✓ "+w.initials+" pagado":"− Pago "+w.initials+" ("+(Number(w.rate)||0)+"€)"
@@ -1345,7 +1350,7 @@ function WorkerView({user, shows, onLogout}){
                   s.notes&&React.createElement("div",{style:{marginTop:4,padding:"6px 9px",background:"#0d0d0d",borderRadius:8,fontSize:11,color:"#ccc",lineHeight:1.5}},"📝 "+s.notes),
                   s.files&&s.files.length>0&&React.createElement("div",{style:{marginTop:6}},
                     React.createElement("div",{style:{fontSize:10,fontWeight:700,color:"#555555",textTransform:"uppercase",letterSpacing:1,marginBottom:5}},"Archivos"),
-                    s.files.map((f,i)=>React.createElement("a",{key:i,href:f.data,download:f.name,style:{display:"flex",alignItems:"center",gap:7,padding:"6px 9px",background:"#E6F1FB",borderRadius:8,marginBottom:4,textDecoration:"none"}},
+                    s.files.map((f,i)=>React.createElement("a",{key:i,href:f.url||f.data,download:f.name,style:{display:"flex",alignItems:"center",gap:7,padding:"6px 9px",background:"#E6F1FB",borderRadius:8,marginBottom:4,textDecoration:"none"}},
                       React.createElement("span",{style:{fontSize:14}},f.type&&f.type.includes("pdf")?"📄":"📎"),
                       React.createElement("span",{style:{fontSize:11,fontWeight:600,color:"#185FA5",flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},f.name),
                       React.createElement("span",{style:{fontSize:10,color:"#185FA5",fontWeight:700}},"↓ Descargar")
@@ -1384,7 +1389,7 @@ function WorkerView({user, shows, onLogout}){
         ),
         detail.files&&detail.files.length>0&&React.createElement("div",null,
           React.createElement("div",{style:{fontSize:9,letterSpacing:2,textTransform:"uppercase",color:"#E03A38",marginBottom:8}},"Archivos"),
-          detail.files.map((f,i)=>React.createElement("a",{key:i,href:f.data,download:f.name,style:{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",background:"#0d0d0d",borderRadius:10,marginBottom:6,textDecoration:"none"}},
+          detail.files.map((f,i)=>React.createElement("a",{key:i,href:f.url||f.data,download:f.name,style:{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",background:"#0d0d0d",borderRadius:10,marginBottom:6,textDecoration:"none"}},
             React.createElement("span",{style:{fontSize:16}},f.type&&f.type.includes("pdf")?"📄":"📎"),
             React.createElement("span",{style:{fontSize:12,fontWeight:600,color:"#60a5fa",flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},f.name),
             React.createElement("span",{style:{fontSize:10,color:"#60a5fa",fontWeight:700}},"↓")
@@ -1469,8 +1474,10 @@ function AdminApp({user, onLogout}){
   },{sync:canFinance});
   // Trabajadores para nómina (solo admin; privado, ni Miguel lo descarga).
   const [workers,setWorkers]=useSyncedState("td_workers",[],{sync:canFinance});
+  const [team,setTeam]=useSyncedState("td_team",[]); // identidades de trabajadores (compartido, para asignarlos a shows)
   const [customArtists,setCustomArtists]=useSyncedState("td_artists",{});
   applyCustomArtists(customArtists); // reconstruye ARTISTS/SHOW_RATES antes de renderizar hijos
+  applyCustomTeam(team); // añade los trabajadores al TEAM para poder asignarlos a shows
   const addArtist=React.useCallback(function(key,data){
     setCustomArtists(function(prev){ const n={...prev}; n[key]=data; return n; });
   },[setCustomArtists]);
@@ -1510,7 +1517,7 @@ function AdminApp({user, onLogout}){
     tab==="marketing"&&React.createElement(MktgPanel),
     tab==="office"&&React.createElement(OfficePanel),
     tab==="material"&&React.createElement(MaterialPanel,{cases,setCases}),
-    tab==="finance"&&canFinance&&React.createElement(FinancePanel,{finances,setFinances,shows,workers,setWorkers}),
+    tab==="finance"&&canFinance&&React.createElement(FinancePanel,{finances,setFinances,shows,workers,setWorkers,setTeam}),
     tab==="stats"&&React.createElement(StatsPanel,{shows,conflicts})
   );
 }
@@ -1523,6 +1530,8 @@ function WorkerApp({user, onLogout}){
   });
   const [customArtists]=useSyncedState("td_artists",{});
   applyCustomArtists(customArtists);
+  const [team]=useSyncedState("td_team",[]);
+  applyCustomTeam(team);
   return React.createElement(WorkerView,{user,shows,onLogout});
 }
 
