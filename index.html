@@ -1276,7 +1276,8 @@ function ConflictsPanel({shows,conflicts,setShows}){
 // role: "admin"=acceso total · "socio"=todo menos Finanzas · "worker"=vista técnico.
 // finance:false oculta Y bloquea Finanzas para esa cuenta (Miguel es socio).
 const USERS_BY_EMAIL={
-  "andres@weareoffstage.com": {name:"Andrés Ortiz",  role:"admin", memberId:"yo", finance:true,  initials:"YO",color:"#E03A38",bg:"#1a0a0a"},
+  "andres@weareoffstage.pro": {name:"Andrés Ortiz",  role:"admin", memberId:"yo", finance:true,  initials:"YO",color:"#E03A38",bg:"#1a0a0a"},
+  "andres@weareoffstage.com": {name:"Andrés Ortiz",  role:"admin", memberId:"yo", finance:true,  initials:"YO",color:"#E03A38",bg:"#1a0a0a"}, // respaldo temporal — se puede quitar cuando el login con .pro esté confirmado
   "allnightproducer@gmail.com": {name:"Miguel García", role:"socio", memberId:"w2", finance:false, initials:"MG",color:"#7C3AED",bg:"#EDE9FE"},
   // Andrés Hernández (w1): sin cuenta por ahora — no trabaja actualmente con OffStage.
   // Sus shows ya asignados siguen visibles; se pueden reasignar desde el panel.
