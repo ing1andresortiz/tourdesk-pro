@@ -596,6 +596,190 @@ function MktgModal({ev,onClose}){
 }
 
 // ── SHOWS PANEL ───────────────────────────────────────────────
+// ── IMPORT / EXPORT DE SHOWS (Excel · CSV) ────────────────────
+// SheetJS se carga bajo demanda (solo al importar/exportar) para no ralentizar
+// el arranque. Requiere conexión la primera vez.
+function loadXLSX(){
+  return new Promise(function(resolve,reject){
+    if(window.XLSX) return resolve(window.XLSX);
+    var s=document.createElement("script");
+    s.src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js";
+    s.onload=function(){ window.XLSX?resolve(window.XLSX):reject(new Error("Excel no disponible")); };
+    s.onerror=function(){ reject(new Error("No se pudo cargar la librería de Excel (¿sin conexión?)")); };
+    document.head.appendChild(s);
+  });
+}
+function _stripAccents(str){ var out=""; for(var i=0;i<str.length;i++){ var c=str.charCodeAt(i); if(c>=768&&c<=879) continue; out+=str[i]; } return out; }
+function _norm(v){ return _stripAccents(String(v==null?"":v).trim().toLowerCase().normalize("NFD")); }
+function _p2(n){ return (n<10?"0":"")+n; }
+// Valor de celda (Date · serie Excel · texto) -> "YYYY-MM-DD"
+function toISODate(v){
+  if(v==null||v==="") return "";
+  if(v instanceof Date && !isNaN(v)) return v.getFullYear()+"-"+_p2(v.getMonth()+1)+"-"+_p2(v.getDate());
+  if(typeof v==="number"){ var dn=new Date(Math.round((v-25569)*86400000)); if(!isNaN(dn)) return dn.getUTCFullYear()+"-"+_p2(dn.getUTCMonth()+1)+"-"+_p2(dn.getUTCDate()); }
+  var s=String(v).trim();
+  var m=s.match(/^(\d{4})[-\/.](\d{1,2})[-\/.](\d{1,2})/); if(m) return m[1]+"-"+_p2(+m[2])+"-"+_p2(+m[3]);
+  m=s.match(/^(\d{1,2})[-\/.](\d{1,2})[-\/.](\d{2,4})/); if(m){ var y=+m[3]; if(y<100)y+=2000; return y+"-"+_p2(+m[2])+"-"+_p2(+m[1]); }
+  var d2=new Date(s); if(!isNaN(d2)) return d2.getFullYear()+"-"+_p2(d2.getMonth()+1)+"-"+_p2(d2.getDate());
+  return "";
+}
+var _SHOWCOLS={
+  date:["fecha","date","dia","fecha show","fecha del show","day"],
+  artist:["artista","artist","acto","act","grupo","dj"],
+  city:["ciudad","city","localidad","poblacion","town"],
+  venue:["sala","venue","recinto","local","club","lugar","sitio"],
+  status:["estado","status","confirmacion","confirmado"],
+  assigned:["asignados","asignado","asignacion","trabajadores","trabajador","tecnicos","tecnico","workers","worker","crew","equipo","foh","responsable"],
+  notes:["notas","nota","notes","observaciones","comentarios","obs"]
+};
+function _detectCols(hdr){
+  var idx={};
+  (hdr||[]).forEach(function(h,i){ var n=_norm(h); if(!n) return;
+    Object.keys(_SHOWCOLS).forEach(function(f){ if(idx[f]!=null) return;
+      if(_SHOWCOLS[f].some(function(sy){ return n===sy||(n.length>2&&n.indexOf(sy)>=0); })) idx[f]=i;
+    });
+  });
+  return idx;
+}
+function _findArtistKey(name){
+  var n=_norm(name); if(!n) return null;
+  var ks=Object.keys(ARTISTS);
+  for(var i=0;i<ks.length;i++){ var k=ks[i]; if(_norm(k)===n||_norm(ARTISTS[k].name)===n) return k; }
+  return null;
+}
+// texto de asignados -> {ids:[memberIds], miss:[nombres no encontrados]}
+function _matchWorkers(txt){
+  var ids=[],miss=[];
+  if(txt==null||txt==="") return {ids:ids,miss:miss};
+  String(txt).split(/[,;\/|]+/).forEach(function(part){
+    var n=_norm(part); if(!n) return;
+    if(n==="yo"||n==="foh"||n.indexOf("yo (foh)")>=0){ if(ids.indexOf("yo")<0)ids.push("yo"); return; }
+    var found=null;
+    for(var i=0;i<TEAM.length;i++){ var m=TEAM[i]; var mn=_norm(m.name);
+      if(mn===n||_norm(m.initials)===n||(n.length>2&&mn.indexOf(n)>=0)){ found=m.id; break; }
+    }
+    if(found){ if(ids.indexOf(found)<0)ids.push(found); } else miss.push(String(part).trim());
+  });
+  return {ids:ids,miss:miss};
+}
+// Lee un File (xlsx/xls/csv) -> {shows, newArtists, warnings} o {error}
+function parseShowsFile(file){
+  return loadXLSX().then(function(XLSX){
+    return new Promise(function(resolve){
+      var reader=new FileReader();
+      reader.onload=function(e){
+        try{
+          var wb=XLSX.read(new Uint8Array(e.target.result),{type:"array",cellDates:true});
+          var ws=wb.Sheets[wb.SheetNames[0]];
+          var rows=XLSX.utils.sheet_to_json(ws,{header:1,blankrows:false,defval:""});
+          if(!rows||!rows.length) return resolve({error:"El archivo está vacío."});
+          var idx=_detectCols(rows[0]);
+          if(idx.date==null) return resolve({error:"No encontré la columna FECHA. Descarga la plantilla o revisa las cabeceras (Fecha, Artista, Ciudad, Sala, Estado, Asignados, Notas)."});
+          var base=Date.now(), shows=[], warnings=[], newArtists={};
+          function makeKey(name){ var slug=_norm(name).replace(/[^a-z0-9]/g,"").slice(0,12)||"art"; var key=slug,i=2;
+            var taken=function(k){ if(k in ARTISTS) return true; for(var nk in newArtists){ if(newArtists[nk].key===k) return true; } return false; };
+            while(taken(key)){ key=slug+i; i++; } return key; }
+          for(var r=1;r<rows.length;r++){
+            var row=rows[r]; if(!row||row.every(function(c){return c===""||c==null;})) continue;
+            var date=toISODate(row[idx.date]);
+            if(!date){ warnings.push("Fila "+(r+1)+": fecha no válida, se omite."); continue; }
+            var artName=idx.artist!=null?String(row[idx.artist]||"").trim():"";
+            var aKey=_findArtistKey(artName);
+            if(!aKey&&artName){ var nk=_norm(artName);
+              if(newArtists[nk]) aKey=newArtists[nk].key;
+              else { aKey=makeKey(artName); var pal=ARTIST_PALETTE[Object.keys(newArtists).length%ARTIST_PALETTE.length];
+                newArtists[nk]={key:aKey,data:{name:artName,short:(artName.slice(0,2)||"?").toUpperCase(),color:pal[0],bg:pal[1],fee:0,rental:0}}; }
+            }
+            if(!aKey) aKey=Object.keys(ARTISTS)[0]||"luar";
+            var wk=_matchWorkers(idx.assigned!=null?row[idx.assigned]:"");
+            if(wk.miss.length) warnings.push("Fila "+(r+1)+": no reconocí a “"+wk.miss.join(", ")+"”, queda sin asignar.");
+            var st=_norm(idx.status!=null?row[idx.status]:"");
+            var status=(st.indexOf("tbc")>=0||st.indexOf("confirmar")>=0||st.indexOf("pend")>=0||st.indexOf("prov")>=0)?"tbc":"confirmed";
+            shows.push({ id:base+shows.length, artist:aKey, date:date,
+              venue:idx.venue!=null?String(row[idx.venue]||"").trim():"",
+              city:idx.city!=null?String(row[idx.city]||"").trim():"",
+              assigned:wk.ids, status:status,
+              notes:idx.notes!=null?String(row[idx.notes]||"").trim():"" });
+          }
+          resolve({shows:shows,newArtists:Object.keys(newArtists).map(function(k){return newArtists[k];}),warnings:warnings});
+        }catch(err){ resolve({error:"No pude leer el archivo: "+(err&&err.message?err.message:err)}); }
+      };
+      reader.onerror=function(){ resolve({error:"Error leyendo el archivo."}); };
+      reader.readAsArrayBuffer(file);
+    });
+  });
+}
+function exportShowsXLSX(shows){
+  return loadXLSX().then(function(XLSX){
+    var lbl={confirmed:"Confirmado",tbc:"Por confirmar"};
+    var data=(shows||[]).slice().sort(function(a,b){return String(a.date).localeCompare(String(b.date));}).map(function(s){
+      var mem=TEAM.filter(function(m){return (s.assigned||[]).indexOf(m.id)>=0;}).map(function(m){return m.name;});
+      return {Fecha:s.date||"",Artista:(ARTISTS[s.artist]&&ARTISTS[s.artist].name)||s.artist||"",Ciudad:s.city||"",Sala:s.venue||"",Estado:lbl[s.status]||s.status||"",Asignados:mem.join(", "),Notas:s.notes||""};
+    });
+    var ws=XLSX.utils.json_to_sheet(data,{header:["Fecha","Artista","Ciudad","Sala","Estado","Asignados","Notas"]});
+    ws["!cols"]=[{wch:12},{wch:16},{wch:16},{wch:26},{wch:14},{wch:22},{wch:30}];
+    var wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,"Shows");
+    var d=new Date(); XLSX.writeFile(wb,"OffStage_Shows_"+d.getFullYear()+_p2(d.getMonth()+1)+_p2(d.getDate())+".xlsx");
+  });
+}
+function downloadShowsTemplate(){
+  return loadXLSX().then(function(XLSX){
+    var rows=[["Fecha","Artista","Ciudad","Sala","Estado","Asignados","Notas"],
+      ["2026-09-15","Luar La L","Valencia","Sala Repvblicca","Confirmado","Yo (FOH)","Llevar XLR extra"],
+      ["2026-09-16","Beele","Madrid","La Riviera","Por confirmar","Miguel García",""]];
+    var ws=XLSX.utils.aoa_to_sheet(rows); ws["!cols"]=[{wch:12},{wch:16},{wch:16},{wch:26},{wch:14},{wch:22},{wch:30}];
+    var wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,"Shows"); XLSX.writeFile(wb,"OffStage_Plantilla_Shows.xlsx");
+  });
+}
+function ImportShowsModal({onClose,onImport}){
+  const [busy,setBusy]=React.useState(false);
+  const [err,setErr]=React.useState("");
+  const [res,setRes]=React.useState(null);
+  const fileRef=React.useRef(null);
+  const onFile=function(ev){ const f=ev.target.files&&ev.target.files[0]; if(!f) return; setBusy(true); setErr("");
+    parseShowsFile(f).then(function(r){ setBusy(false); if(fileRef.current) fileRef.current.value="";
+      if(r.error){ setErr(r.error); return; } if(!r.shows||!r.shows.length){ setErr("No encontré shows válidos en el archivo."); return; } setRes(r);
+    }); };
+  const h=React.createElement;
+  const ov={position:"fixed",inset:0,background:"rgba(0,0,0,.65)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:9999,padding:14};
+  const card={background:"#141414",border:"1px solid #2a2a2a",borderRadius:14,padding:16,width:"100%",maxWidth:480,maxHeight:"86vh",overflow:"auto",color:"#f0ebe4"};
+  if(!res){
+    return h("div",{style:ov,onClick:onClose},
+      h("div",{style:card,onClick:function(e){e.stopPropagation();}},
+        h("div",{style:{fontSize:17,fontWeight:800,marginBottom:4,fontFamily:"Bebas Neue,sans-serif",letterSpacing:1}},"IMPORTAR SHOWS"),
+        h("div",{style:{fontSize:12,color:"#999",marginBottom:14,lineHeight:1.5}},"Sube un Excel o CSV con tus fechas. Columnas: Fecha, Artista, Ciudad, Sala, Estado, Asignados, Notas. Los artistas que no existan se crean solos y los trabajadores se asignan por nombre."),
+        err&&h("div",{style:{background:"#2a0f0f",border:"1px solid #4a1414",color:"#ff9d9d",borderRadius:8,padding:"8px 10px",fontSize:12,marginBottom:12,lineHeight:1.5}},err),
+        busy&&h("div",{style:{fontSize:12,color:"#E03A38",marginBottom:12}},"Leyendo archivo..."),
+        h("input",{ref:fileRef,type:"file",accept:".xlsx,.xls,.csv",onChange:onFile,style:{display:"none"}}),
+        h("button",{onClick:function(){ if(fileRef.current) fileRef.current.click(); },disabled:busy,style:{width:"100%",padding:"12px",borderRadius:10,border:"none",background:"#E03A38",color:"#fff",fontWeight:700,fontSize:14,cursor:"pointer",marginBottom:9,opacity:busy?.6:1}},"📄 Elegir archivo (Excel o CSV)"),
+        h("button",{onClick:function(){ downloadShowsTemplate().catch(function(e){setErr(e.message);}); },style:{width:"100%",padding:"10px",borderRadius:10,border:"1px solid #2a2a2a",background:"#1a1a1a",color:"#cfcfcf",fontWeight:600,fontSize:12,cursor:"pointer",marginBottom:9}},"⬇︎ Descargar plantilla de ejemplo"),
+        h("button",{onClick:onClose,style:{width:"100%",padding:"9px",borderRadius:10,border:"none",background:"transparent",color:"#888",fontWeight:600,fontSize:12,cursor:"pointer"}},"Cancelar")
+      )
+    );
+  }
+  return h("div",{style:ov,onClick:onClose},
+    h("div",{style:card,onClick:function(e){e.stopPropagation();}},
+      h("div",{style:{fontSize:17,fontWeight:800,marginBottom:4,fontFamily:"Bebas Neue,sans-serif",letterSpacing:1}},"REVISAR IMPORTACIÓN"),
+      h("div",{style:{fontSize:13,color:"#16a34a",fontWeight:700,marginBottom:8}},"✓ "+res.shows.length+" shows listos"+(res.newArtists.length?" · "+res.newArtists.length+" artista(s) nuevo(s)":"")),
+      res.newArtists.length>0&&h("div",{style:{fontSize:11,color:"#f59e0b",marginBottom:8}},"Se crearán: "+res.newArtists.map(function(a){return a.data.name;}).join(", ")),
+      res.warnings.length>0&&h("div",{style:{background:"#231a0a",border:"1px solid #4a3410",borderRadius:8,padding:"8px 10px",fontSize:11,color:"#e5b769",marginBottom:10,maxHeight:110,overflow:"auto"}},res.warnings.slice(0,20).map(function(w,i){return h("div",{key:i,style:{marginBottom:2}},"• "+w);})),
+      h("div",{style:{maxHeight:"38vh",overflow:"auto",border:"1px solid #2a2a2a",borderRadius:8,marginBottom:12}},
+        res.shows.slice(0,300).map(function(s,i){ var mem=TEAM.filter(function(m){return s.assigned.indexOf(m.id)>=0;}).map(function(m){return m.initials;}).join(",");
+          return h("div",{key:i,style:{display:"flex",gap:8,padding:"6px 9px",borderBottom:"1px solid #1e1e1e",fontSize:11}},
+            h("span",{style:{color:"#E03A38",fontWeight:700,minWidth:74}},s.date),
+            h("span",{style:{color:"#ccc",flex:1,minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},((ARTISTS[s.artist]&&ARTISTS[s.artist].name)||s.artist)+" · "+(s.venue||"—")+" ("+(s.city||"—")+")"),
+            h("span",{style:{color:"#888",minWidth:34,textAlign:"right"}},mem||"—")
+          );
+        })
+      ),
+      h("div",{style:{display:"flex",gap:8}},
+        h("button",{onClick:function(){ setRes(null); setErr(""); },style:{flex:1,padding:"11px",borderRadius:10,border:"1px solid #2a2a2a",background:"#1a1a1a",color:"#f0ebe4",fontWeight:600,fontSize:13,cursor:"pointer"}},"Atrás"),
+        h("button",{onClick:function(){ onImport(res); },style:{flex:2,padding:"11px",borderRadius:10,border:"none",background:"#E03A38",color:"#fff",fontWeight:700,fontSize:13,cursor:"pointer"}},"Importar "+res.shows.length+" shows")
+      )
+    )
+  );
+}
+
 function ShowsPanel({shows,setShows,conflicts,onAddArtist,onRemoveArtist,customArtists}){
   const [fa,setFa]=React.useState("all");
   const [fp,setFp]=React.useState("all");
@@ -604,8 +788,15 @@ function ShowsPanel({shows,setShows,conflicts,onAddArtist,onRemoveArtist,customA
   const grouped=groupM(filtered);
   const pill=(label,active,onClick,color,bg)=>React.createElement("button",{onClick,style:{padding:"5px 12px",borderRadius:20,border:active?"2px solid "+color:"1px solid #2a2a2a",background:active?bg:"#1a1a1a",color:active?color:"#888888",fontWeight:600,fontSize:11,cursor:"pointer",whiteSpace:"nowrap"}},label);
   const blankShow={artist:"luar",date:"",venue:"",city:"",status:"confirmed",assigned:[],notes:""};
+  const [importOpen,setImportOpen]=React.useState(false);
+  const [impMsg,setImpMsg]=React.useState("");
   return React.createElement("div",{style:{flex:1,overflow:"auto",padding:"11px 14px 80px"}},
-    React.createElement("button",{onClick:()=>setEditing(blankShow),style:{width:"100%",padding:"11px",borderRadius:10,border:"1px solid #2a1414",background:"#1a0808",color:"#E03A38",fontWeight:700,fontSize:13,cursor:"pointer",marginBottom:11,fontFamily:"DM Sans,sans-serif",letterSpacing:.5}},"+ Nuevo Show"),
+    React.createElement("button",{onClick:()=>setEditing(blankShow),style:{width:"100%",padding:"11px",borderRadius:10,border:"1px solid #2a1414",background:"#1a0808",color:"#E03A38",fontWeight:700,fontSize:13,cursor:"pointer",marginBottom:9,fontFamily:"DM Sans,sans-serif",letterSpacing:.5}},"+ Nuevo Show"),
+    React.createElement("div",{style:{display:"flex",gap:7,marginBottom:11}},
+      React.createElement("button",{onClick:function(){ exportShowsXLSX(shows).catch(function(e){alert("Exportar: "+e.message);}); },style:{flex:1,padding:"9px",borderRadius:9,border:"1px solid #23331f",background:"#0f1a0c",color:"#7bd16a",fontWeight:700,fontSize:12,cursor:"pointer"}},"⬇︎ Exportar Excel"),
+      React.createElement("button",{onClick:function(){ setImportOpen(true); },style:{flex:1,padding:"9px",borderRadius:9,border:"1px solid #1f2a33",background:"#0c1420",color:"#6ab0d1",fontWeight:700,fontSize:12,cursor:"pointer"}},"⬆︎ Importar Excel")
+    ),
+    impMsg&&React.createElement("div",{style:{background:"#0f1a0c",border:"1px solid #23331f",color:"#7bd16a",borderRadius:8,padding:"8px 10px",fontSize:12,fontWeight:600,marginBottom:11}},impMsg),
     React.createElement("div",{style:{display:"flex",gap:6,flexWrap:"wrap",marginBottom:7}},
       pill("Todos",fa==="all",()=>setFa("all"),"#fff","#111"),
       Object.entries(ARTISTS).map(([k,a])=>pill(a.name,fa===k,()=>setFa(fa===k?"all":k),a.color,a.bg))
@@ -664,6 +855,16 @@ function ShowsPanel({shows,setShows,conflicts,onAddArtist,onRemoveArtist,customA
       onDelete:id=>{
         setShows(p=>p.filter(x=>x.id!==id));
         setEditing(null);
+      }
+    }),
+    importOpen&&React.createElement(ImportShowsModal,{
+      onClose:function(){ setImportOpen(false); },
+      onImport:function(r){
+        (r.newArtists||[]).forEach(function(na){ if(onAddArtist) onAddArtist(na.key,na.data); });
+        setShows(function(p){ return [...(Array.isArray(p)?p:[]), ...r.shows]; });
+        setImportOpen(false);
+        setImpMsg("✓ "+r.shows.length+" shows importados"+(r.newArtists.length?" · "+r.newArtists.length+" artista(s) creados":""));
+        setTimeout(function(){ setImpMsg(""); },6000);
       }
     })
   );
