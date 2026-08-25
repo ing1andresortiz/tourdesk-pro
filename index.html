@@ -369,6 +369,33 @@ const isToday=d=>new Date(d+"T12:00:00").toDateString()===new Date().toDateStrin
 const isPast=d=>new Date(d+"T12:00:00")<new Date()&&!isToday(d);
 const groupM=arr=>{const g={};arr.forEach(s=>{const m=s.date.slice(0,7);if(!g[m])g[m]=[];g[m].push(s);});return g;};
 
+// ── DÍAS LIBRES (disponibilidad en la gira de Beele) ─────────
+const _noon=d=>new Date(d+"T12:00:00");
+const daysBetween=(a,b)=>Math.round((_noon(b)-_noon(a))/86400000);
+const addDays=(d,n)=>{const t=_noon(d);t.setDate(t.getDate()+n);return t.getFullYear()+"-"+String(t.getMonth()+1).padStart(2,"0")+"-"+String(t.getDate()).padStart(2,"0");};
+const monthsBetween=(a,b)=>{const o=[];let y=+a.slice(0,4),m=+a.slice(5,7);const ey=+b.slice(0,4),em=+b.slice(5,7);while(y<ey||(y===ey&&m<=em)){o.push(y+"-"+String(m).padStart(2,"0"));m++;if(m>12){m=1;y++;}}return o;};
+// Días libres/ocupados de "yo" dentro de la gira de Beele (día ocupado = CUALQUIER show tuyo).
+function libresData(shows,_today){
+  const mine=shows.filter(s=>Array.isArray(s.assigned)&&s.assigned.indexOf("yo")>=0);
+  const beele=mine.filter(s=>s.artist==="beele").slice().sort((a,b)=>a.date.localeCompare(b.date));
+  if(!beele.length) return {empty:true,reason:"no-beele"};
+  let todayISO=_today; if(!todayISO){const n=new Date();todayISO=n.getFullYear()+"-"+String(n.getMonth()+1).padStart(2,"0")+"-"+String(n.getDate()).padStart(2,"0");}
+  const firstBeele=beele[0].date,lastBeele=beele[beele.length-1].date;
+  if(lastBeele<todayISO) return {empty:true,reason:"finished",lastBeele};
+  const periodStart=firstBeele>todayISO?firstBeele:todayISO, periodEnd=lastBeele;
+  const inR=d=>d>=periodStart&&d<=periodEnd;
+  const busy={}; mine.forEach(s=>{if(inR(s.date)){(busy[s.date]=busy[s.date]||[]).push(s);}});
+  const busyDates=Object.keys(busy).sort();
+  const totalDays=daysBetween(periodStart,periodEnd)+1;
+  const busyDayCount=busyDates.length, freeDayCount=totalDays-busyDayCount;
+  const windows=[];
+  if(busyDates.length){
+    if(busyDates[0]>periodStart){const g=daysBetween(periodStart,busyDates[0]); if(g>0) windows.push({start:periodStart,end:addDays(busyDates[0],-1),days:g,after:null,before:busy[busyDates[0]],lead:true});}
+    for(let i=0;i<busyDates.length-1;i++){const d1=busyDates[i],d2=busyDates[i+1];const g=daysBetween(d1,d2)-1;if(g>0)windows.push({start:addDays(d1,1),end:addDays(d2,-1),days:g,after:busy[d1],before:busy[d2]});}
+  } else windows.push({start:periodStart,end:periodEnd,days:totalDays,after:null,before:null,lead:true});
+  return {empty:false,periodStart,periodEnd,firstBeele,lastBeele,todayISO,totalDays,busyDayCount,freeDayCount,busy,busyDates,windows,months:monthsBetween(periodStart,periodEnd)};
+}
+
 // ── MINI COMPONENTS ──────────────────────────────────────────
 function Av({m,sz=28}){
   return React.createElement("div",{style:{width:sz,height:sz,borderRadius:"50%",background:m.bg,color:m.color,display:"flex",alignItems:"center",justifyContent:"center",fontSize:sz*.33,fontWeight:700,flexShrink:0}},m.initials);
@@ -1654,6 +1681,79 @@ function LoginScreen(){
 }
 
 // ── ADMIN APP
+function LibresPanel({shows}){
+  const d=libresData(shows);
+  if(d.empty){
+    const msg=d.reason==="finished"
+      ? "La gira de Beele ya terminó. Cuando cargues nuevas fechas, aquí verás tus días libres."
+      : "Aún no tienes shows de Beele asignados a ti. Cuando los tengas, aquí verás de un vistazo tus días libres para coger otros conciertos.";
+    return React.createElement("div",{style:{padding:"48px 24px",textAlign:"center",color:"#777",fontFamily:"DM Sans,sans-serif",fontSize:14,lineHeight:1.5}},msg);
+  }
+  const WD=["L","M","X","J","V","S","D"];
+  // Resumen
+  const stat=(v,l,col,bg,bd)=>React.createElement("div",{style:{flex:1,background:bg,border:"1px solid "+bd,borderRadius:12,padding:"11px 10px"}},
+    React.createElement("div",{style:{fontFamily:"Bebas Neue,sans-serif",fontSize:30,color:col,lineHeight:1}},v),
+    React.createElement("div",{style:{fontSize:10.5,color:col,fontWeight:600,marginTop:2}},l));
+  const summary=React.createElement("div",{style:{padding:"16px 16px 4px"}},
+    React.createElement("div",{style:{fontFamily:"Bebas Neue,sans-serif",fontSize:17,letterSpacing:1.5,color:"#fff"}},"🌴 DÍAS LIBRES · GIRA BEELE"),
+    React.createElement("div",{style:{fontSize:11,color:"#777",marginTop:2,marginBottom:12}},"Desde hoy hasta "+fmtShort(d.periodEnd)+" · día ocupado = cualquier show tuyo"),
+    React.createElement("div",{style:{display:"flex",gap:8}},
+      stat(d.freeDayCount,"días libres","#16a34a","#0e2a12","#16a34a55"),
+      stat(d.busyDayCount,"días con show","#E03A38","#1a0f0f","#E03A3855"),
+      stat(d.totalDays,"días de gira","#ddd","#111","#222"))
+  );
+  // Calendarios
+  const cal=d.months.map(function(mk){
+    const y=+mk.slice(0,4),mo=+mk.slice(5,7);
+    const daysInMonth=new Date(y,mo,0).getDate();
+    const offset=(new Date(y,mo-1,1).getDay()+6)%7;
+    const cells=[];
+    for(let i=0;i<offset;i++) cells.push(React.createElement("div",{key:"e"+i,style:{height:40}}));
+    for(let day=1;day<=daysInMonth;day++){
+      const iso=mk+"-"+String(day).padStart(2,"0");
+      const out=!(iso>=d.periodStart&&iso<=d.periodEnd);
+      const bl=d.busy[iso]; const past=isPast(iso), today=isToday(iso);
+      let bg="transparent",bd="1px solid transparent",numColor="#555",dot=null;
+      if(out){ numColor="#2f2f2f"; }
+      else if(bl){
+        const art=ARTISTS[bl[0].artist]||{color:"#E03A38",short:"?"};
+        bg="#1b1b1b"; bd="1px solid #2a2a2a"; numColor=past?"#5a5a5a":"#e8e8e8";
+        dot=React.createElement("div",{style:{fontSize:8,fontWeight:800,color:art.color,letterSpacing:.2,opacity:past?.55:1}},art.short+(bl.length>1?"·":""));
+      } else if(past){ bg="transparent"; numColor="#3a3a3a"; }
+      else { bg="#0e2a12"; bd="1px solid #16a34a55"; numColor="#16a34a"; dot=React.createElement("div",{style:{width:5,height:5,borderRadius:"50%",background:"#16a34a"}}); }
+      cells.push(React.createElement("div",{key:iso,title:iso+(bl?" · "+bl.map(s=>s.city).join(", "):(out?"":" · libre")),style:{height:40,borderRadius:8,background:bg,border:today?"1.5px solid #E03A38":bd,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2}},
+        React.createElement("div",{style:{fontSize:11,fontWeight:700,color:numColor,fontFamily:"DM Sans,sans-serif"}},day),dot));
+    }
+    return React.createElement("div",{key:mk,style:{padding:"0 16px",marginBottom:18}},
+      React.createElement("div",{style:{fontFamily:"Bebas Neue,sans-serif",fontSize:14,letterSpacing:1.5,color:"#fff",textTransform:"uppercase",marginBottom:8}},monthName(mk)),
+      React.createElement("div",{style:{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:4,marginBottom:4}},WD.map((w,i)=>React.createElement("div",{key:i,style:{textAlign:"center",fontSize:9,fontWeight:700,color:"#666"}},w))),
+      React.createElement("div",{style:{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:4}},cells));
+  });
+  // Leyenda
+  const legend=React.createElement("div",{style:{display:"flex",gap:16,justifyContent:"center",padding:"2px 16px 14px",flexWrap:"wrap"}},
+    React.createElement("div",{style:{display:"flex",alignItems:"center",gap:5,fontSize:10,color:"#16a34a"}},React.createElement("div",{style:{width:10,height:10,borderRadius:3,background:"#0e2a12",border:"1px solid #16a34a55"}}),"Libre"),
+    React.createElement("div",{style:{display:"flex",alignItems:"center",gap:5,fontSize:10,color:"#aaa"}},React.createElement("div",{style:{width:10,height:10,borderRadius:3,background:"#1b1b1b",border:"1px solid #2a2a2a"}}),"Con show"),
+    React.createElement("div",{style:{display:"flex",alignItems:"center",gap:5,fontSize:10,color:"#E03A38"}},React.createElement("div",{style:{width:10,height:10,borderRadius:3,border:"1.5px solid #E03A38"}}),"Hoy"));
+  // Huecos
+  const winRows=d.windows.map(function(w,i){
+    const past=w.end<d.todayISO, bookable=w.days>=3&&!past;
+    const rng=w.start===w.end?fmtShort(w.start):fmtShort(w.start)+" – "+fmtShort(w.end);
+    const ctx=w.lead?"desde hoy, antes de "+((w.before&&w.before[0].city)||"tu próximo show"):"entre "+((w.after&&w.after[0].city)||"?")+" y "+((w.before&&w.before[0].city)||"?");
+    return React.createElement("div",{key:i,style:{display:"flex",alignItems:"center",gap:10,padding:"11px 16px",borderBottom:"1px solid #161616",opacity:past?.4:1}},
+      React.createElement("div",{style:{width:8,height:8,borderRadius:"50%",background:"#16a34a",flexShrink:0}}),
+      React.createElement("div",{style:{flex:1,minWidth:0}},
+        React.createElement("div",{style:{fontSize:13,fontWeight:700,color:"#eee",fontFamily:"DM Sans,sans-serif"}},rng+"  ·  "+w.days+(w.days===1?" día libre":" días libres")),
+        React.createElement("div",{style:{fontSize:10,color:"#777",marginTop:2}},ctx)),
+      bookable&&React.createElement("div",{style:{fontSize:9,fontWeight:800,color:"#16a34a",background:"#0e2a12",border:"1px solid #16a34a55",borderRadius:20,padding:"3px 8px",whiteSpace:"nowrap",flexShrink:0}},"🎯 cabe otro bolo"));
+  });
+  const winSection=React.createElement("div",{style:{marginTop:4}},
+    React.createElement("div",{style:{padding:"6px 16px 8px",fontFamily:"Bebas Neue,sans-serif",fontSize:15,letterSpacing:1.5,color:"#fff"}},"HUECOS LIBRES ("+d.windows.length+")"),
+    d.windows.length?winRows:React.createElement("div",{style:{padding:"10px 16px",color:"#777",fontSize:12,fontFamily:"DM Sans,sans-serif"}},"No hay huecos entre tus shows — agenda seguida."));
+  return React.createElement("div",{style:{flex:1,overflowY:"auto",paddingBottom:30}},summary,legend,
+    React.createElement("div",{style:{height:1,background:"#161616",margin:"0 0 14px"}}),cal,
+    React.createElement("div",{style:{height:1,background:"#161616",margin:"4px 0"}}),winSection);
+}
+
 function AdminApp({user, onLogout}){
   const canFinance=(user&&user.finance!==false); // false para un socio (Miguel): oculta y NO descarga finanzas
   const [syncStatus,syncError]=useFirebaseStatus();
@@ -1695,7 +1795,7 @@ function AdminApp({user, onLogout}){
     return ids;
   },[shows]);
   const confDays=[...new Set(shows.filter(s=>conflicts.has(s.id)).map(s=>s.date))].length;
-  const TABS=[{id:"shows",l:"📋"},{id:"conflicts",l:"⚡"+confDays},{id:"marketing",l:"📣"},{id:"office",l:"🏢"},{id:"material",l:"📦"}].concat(canFinance?[{id:"finance",l:"💰"}]:[]).concat([{id:"stats",l:"📊"}]);
+  const TABS=[{id:"shows",l:"📋"},{id:"libres",l:"🌴"},{id:"conflicts",l:"⚡"+confDays},{id:"marketing",l:"📣"},{id:"office",l:"🏢"},{id:"material",l:"📦"}].concat(canFinance?[{id:"finance",l:"💰"}]:[]).concat([{id:"stats",l:"📊"}]);
   const hdr="#111"; const tbar=dark?"#111":"#fff"; const tbdr=dark?"#2a2a2a":"#f3f4f6";
   return React.createElement("div",{style:{display:"flex",flexDirection:"column",height:"100dvh",width:"100%",background:dark?"#050505":"#0d0d0d"}},
     React.createElement("div",{style:{background:hdr,padding:"12px 15px",display:"flex",alignItems:"center",gap:10,paddingTop:"max(12px,env(safe-area-inset-top))"}},
@@ -1716,6 +1816,7 @@ function AdminApp({user, onLogout}){
     ),
     tab==="shows"&&React.createElement(ShowsPanel,{shows,setShows,conflicts,onAddArtist:addArtist,onRemoveArtist:removeArtist,customArtists}),
     tab==="conflicts"&&React.createElement(ConflictsPanel,{shows,conflicts,setShows}),
+    tab==="libres"&&React.createElement(LibresPanel,{shows}),
     tab==="marketing"&&React.createElement(MktgPanel),
     tab==="office"&&React.createElement(OfficePanel),
     tab==="material"&&React.createElement(MaterialPanel,{cases,setCases}),
