@@ -214,6 +214,40 @@ function applyCustomArtists(custom){
   }});
   SHOW_RATES=rates;
 }
+// ── Google Calendar: feed .ics público publicado en Firebase Storage ──
+// Se sube en /calendars/offstage-shows.ics y se suscribe UNA vez en Google
+// Calendar (Desde URL). El enlace es fijo; el contenido se actualiza solo.
+var GCAL_PATH="calendars/offstage-shows.ics";
+var GCAL_URL="https://firebasestorage.googleapis.com/v0/b/"+firebaseConfig.storageBucket+"/o/"+encodeURIComponent(GCAL_PATH)+"?alt=media";
+function icsEsc(s){ return String(s==null?"":s).replace(/\\/g,"\\\\").replace(/;/g,"\\;").replace(/,/g,"\\,").replace(/\r?\n/g,"\\n"); }
+function icsDay(iso){ return String(iso||"").replace(/-/g,""); } // "2026-08-31" -> "20260831"
+function icsNextDay(iso){ var d=new Date(iso+"T12:00:00"); d.setDate(d.getDate()+1); return d.getFullYear()+String(d.getMonth()+1).padStart(2,"0")+String(d.getDate()).padStart(2,"0"); }
+function icsStamp(){ var n=new Date(); function p(x){return String(x).padStart(2,"0");} return n.getUTCFullYear()+p(n.getUTCMonth()+1)+p(n.getUTCDate())+"T"+p(n.getUTCHours())+p(n.getUTCMinutes())+p(n.getUTCSeconds())+"Z"; }
+function buildShowsICS(shows){
+  var stamp=icsStamp(), L=[];
+  L.push("BEGIN:VCALENDAR","VERSION:2.0","PRODID:-//OffStage//TourDesk//ES","CALSCALE:GREGORIAN","METHOD:PUBLISH","X-WR-CALNAME:OffStage · Shows","X-WR-TIMEZONE:Europe/Madrid","X-PUBLISHED-TTL:PT1H","REFRESH-INTERVAL;VALUE=DURATION:PT1H");
+  (Array.isArray(shows)?shows:[]).filter(function(s){return s&&s.date;}).forEach(function(s){
+    var art=(ARTISTS[s.artist]&&ARTISTS[s.artist].name)||s.artist||"Show";
+    var title=art+(s.city?(" · "+s.city):"");
+    var loc=[]; if(s.venue)loc.push(s.venue); if(s.city)loc.push(s.city);
+    L.push("BEGIN:VEVENT");
+    L.push("UID:tdshow-"+s.id+"@offstage");
+    L.push("DTSTAMP:"+stamp);
+    L.push("DTSTART;VALUE=DATE:"+icsDay(s.date));
+    L.push("DTEND;VALUE=DATE:"+icsNextDay(s.date));
+    L.push("SUMMARY:"+icsEsc(title));
+    if(loc.length) L.push("LOCATION:"+icsEsc(loc.join(", ")));
+    if(s.status) L.push("DESCRIPTION:"+icsEsc("Estado: "+s.status+" · OffStage"));
+    L.push("TRANSP:TRANSPARENT","END:VEVENT");
+  });
+  L.push("END:VCALENDAR");
+  return L.join("\r\n")+"\r\n";
+}
+function uploadShowsICS(shows){
+  if(!fbStorage) return Promise.reject(new Error("Storage no disponible"));
+  return fbStorage.ref(GCAL_PATH).putString(buildShowsICS(shows),"raw",{contentType:"text/calendar; charset=utf-8",cacheControl:"public,max-age=300"}).then(function(){ return GCAL_URL; });
+}
+
 const ALL_SHOWS=[
   {id:1, date:"2026-06-23",artist:"luar", venue:"Beach Club Medusa",city:"Cullera",status:"confirmed",assigned:["yo"],notes:""},
   {id:2, date:"2026-06-25",artist:"luar", venue:"Shoko",city:"Barcelona",status:"confirmed",assigned:["yo"],notes:""},
@@ -1754,6 +1788,47 @@ function LibresPanel({shows}){
     React.createElement("div",{style:{height:1,background:"#161616",margin:"4px 0"}}),winSection);
 }
 
+function GCalPanel({shows,gcal,onRefresh}){
+  const url=GCAL_URL;
+  const count=(Array.isArray(shows)?shows:[]).filter(function(s){return s&&s.date;}).length;
+  const g=gcal||{};
+  const whenTxt=g.when?new Date(g.when).toLocaleString("es-ES",{day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"}):"—";
+  const statusColor=g.status==="ok"?"#16a34a":g.status==="saving"?"#d97706":g.status==="err"?"#ef4444":"#888";
+  const statusTxt=g.status==="ok"?("Publicado · "+whenTxt):g.status==="saving"?"Publicando…":g.status==="err"?("Error: "+(g.err||"")):"Se publica solo cuando cambias shows";
+  const copy=function(){
+    try{
+      if(navigator.clipboard&&navigator.clipboard.writeText){ navigator.clipboard.writeText(url).then(function(){alert("Enlace copiado ✓\n\nPégalo en Google Calendar → Otros calendarios → Suscribirse desde URL.");},function(){prompt("Copia este enlace:",url);}); }
+      else { prompt("Copia este enlace:",url); }
+    }catch(e){ prompt("Copia este enlace:",url); }
+  };
+  const box=function(children,extra){ return React.createElement("div",{style:Object.assign({background:"#0f0f0f",border:"1px solid #222",borderRadius:12,padding:"14px 15px",marginBottom:12},extra||{})},children); };
+  const step=function(n,txt){ return React.createElement("div",{key:"s"+n,style:{display:"flex",gap:9,alignItems:"flex-start",marginBottom:9}},
+    React.createElement("div",{style:{width:18,height:18,borderRadius:"50%",background:"#E03A38",color:"#fff",fontSize:10,fontWeight:800,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,marginTop:1}},n),
+    React.createElement("div",{style:{fontSize:12.5,color:"#cfcfcf",lineHeight:1.5,fontFamily:"DM Sans,sans-serif"}},txt)); };
+  return React.createElement("div",{style:{flex:1,overflowY:"auto",padding:"16px",paddingBottom:40}},
+    React.createElement("div",{style:{fontFamily:"Bebas Neue,sans-serif",fontSize:19,letterSpacing:1.5,color:"#fff",marginBottom:4}},"📅 GOOGLE CALENDAR"),
+    React.createElement("div",{style:{fontSize:12,color:"#888",lineHeight:1.55,marginBottom:16,fontFamily:"DM Sans,sans-serif"}},"Tus "+count+" shows se publican en un enlace que se actualiza solo. Suscríbelo UNA vez en Google Calendar y aparecerán ahí — y en el calendario de tu iPhone."),
+    box([
+      React.createElement("div",{key:"l",style:{fontSize:9,letterSpacing:1.5,textTransform:"uppercase",color:"#E03A38",marginBottom:7,fontWeight:700}},"Enlace del calendario"),
+      React.createElement("div",{key:"u",style:{fontSize:11,color:"#bdbdbd",wordBreak:"break-all",fontFamily:"monospace",background:"#080808",border:"1px solid #1e1e1e",borderRadius:8,padding:"9px 10px",lineHeight:1.4,userSelect:"all"}},url),
+      React.createElement("div",{key:"b",style:{display:"flex",gap:8,marginTop:10}},
+        React.createElement("button",{key:"c",onClick:copy,style:{flex:1,padding:"10px",borderRadius:9,border:"none",background:"#E03A38",color:"#fff",fontWeight:700,fontSize:12,cursor:"pointer",fontFamily:"DM Sans,sans-serif"}},"Copiar enlace"),
+        React.createElement("button",{key:"r",onClick:onRefresh,style:{padding:"10px 14px",borderRadius:9,border:"1px solid #2a2a2a",background:"#1a1a1a",color:"#cfcfcf",fontWeight:600,fontSize:12,cursor:"pointer",fontFamily:"DM Sans,sans-serif"}},"↻ Actualizar"))
+    ]),
+    React.createElement("div",{style:{display:"flex",alignItems:"center",gap:7,margin:"0 2px 16px"}},
+      React.createElement("div",{style:{width:7,height:7,borderRadius:"50%",background:statusColor,flexShrink:0}}),
+      React.createElement("div",{style:{fontSize:11,color:"#999",fontFamily:"DM Sans,sans-serif"}},statusTxt)),
+    box([
+      React.createElement("div",{key:"t",style:{fontSize:9,letterSpacing:1.5,textTransform:"uppercase",color:"#E03A38",marginBottom:11,fontWeight:700}},"Cómo suscribirlo (una sola vez)"),
+      step("1","Copia el enlace de arriba."),
+      step("2","En el ordenador, abre Google Calendar. Junto a \"Otros calendarios\" pulsa el \"+\" y elige \"Suscribirse a un calendario\"."),
+      step("3","En \"Desde URL\", pega el enlace y pulsa \"Añadir calendario\"."),
+      step("4","Listo. Tus shows aparecerán ahí y, como tu iPhone usa ese mismo Google, también en el calendario del teléfono.")
+    ]),
+    React.createElement("div",{style:{fontSize:11,color:"#6b6b6b",lineHeight:1.5,padding:"0 2px",fontFamily:"DM Sans,sans-serif"}},"Nota: Google refresca los calendarios suscritos cada varias horas, así que un show nuevo puede tardar un poco en aparecer ahí. No es instantáneo — es un límite de Google, no de la app.")
+  );
+}
+
 function AdminApp({user, onLogout}){
   const canFinance=(user&&user.finance!==false); // false para un socio (Miguel): oculta y NO descarga finanzas
   const [syncStatus,syncError]=useFirebaseStatus();
@@ -1786,6 +1861,19 @@ function AdminApp({user, onLogout}){
   const removeArtist=React.useCallback(function(key){
     setCustomArtists(function(prev){ const n={...prev}; delete n[key]; return n; });
   },[setCustomArtists]);
+  const [gcal,setGcal]=React.useState({status:"idle",when:null,err:null});
+  const onRefresh=React.useCallback(function(){
+    if(!fbStorage){ setGcal({status:"err",when:Date.now(),err:"Storage no disponible"}); return; }
+    setGcal(function(x){return {status:"saving",when:x.when,err:null};});
+    uploadShowsICS(shows).then(function(){ setGcal({status:"ok",when:Date.now(),err:null}); }).catch(function(e){ setGcal({status:"err",when:Date.now(),err:(e&&e.message)||String(e)}); });
+  },[shows]);
+  React.useEffect(function(){
+    if(!fbStorage||!Array.isArray(shows)||shows.length===0) return;
+    var t=setTimeout(function(){
+      uploadShowsICS(shows).then(function(){ setGcal({status:"ok",when:Date.now(),err:null}); }).catch(function(e){ setGcal({status:"err",when:Date.now(),err:(e&&e.message)||String(e)}); });
+    },2500);
+    return function(){ clearTimeout(t); };
+  },[shows]);
   const [tab,setTab]=React.useState("shows");
   const todayMktg=MKTG.filter(e=>isToday(e.date));
   const conflicts=React.useMemo(()=>{
@@ -1795,7 +1883,7 @@ function AdminApp({user, onLogout}){
     return ids;
   },[shows]);
   const confDays=[...new Set(shows.filter(s=>conflicts.has(s.id)).map(s=>s.date))].length;
-  const TABS=[{id:"shows",l:"📋"},{id:"libres",l:"🌴"},{id:"conflicts",l:"⚡"+confDays},{id:"marketing",l:"📣"},{id:"office",l:"🏢"},{id:"material",l:"📦"}].concat(canFinance?[{id:"finance",l:"💰"}]:[]).concat([{id:"stats",l:"📊"}]);
+  const TABS=[{id:"shows",l:"📋"},{id:"libres",l:"🌴"},{id:"gcal",l:"📅"},{id:"conflicts",l:"⚡"+confDays},{id:"marketing",l:"📣"},{id:"office",l:"🏢"},{id:"material",l:"📦"}].concat(canFinance?[{id:"finance",l:"💰"}]:[]).concat([{id:"stats",l:"📊"}]);
   const hdr="#111"; const tbar=dark?"#111":"#fff"; const tbdr=dark?"#2a2a2a":"#f3f4f6";
   return React.createElement("div",{style:{display:"flex",flexDirection:"column",height:"100dvh",width:"100%",background:dark?"#050505":"#0d0d0d"}},
     React.createElement("div",{style:{background:hdr,padding:"12px 15px",display:"flex",alignItems:"center",gap:10,paddingTop:"max(12px,env(safe-area-inset-top))"}},
@@ -1817,6 +1905,7 @@ function AdminApp({user, onLogout}){
     tab==="shows"&&React.createElement(ShowsPanel,{shows,setShows,conflicts,onAddArtist:addArtist,onRemoveArtist:removeArtist,customArtists}),
     tab==="conflicts"&&React.createElement(ConflictsPanel,{shows,conflicts,setShows}),
     tab==="libres"&&React.createElement(LibresPanel,{shows}),
+    tab==="gcal"&&React.createElement(GCalPanel,{shows,gcal,onRefresh}),
     tab==="marketing"&&React.createElement(MktgPanel),
     tab==="office"&&React.createElement(OfficePanel),
     tab==="material"&&React.createElement(MaterialPanel,{cases,setCases}),
