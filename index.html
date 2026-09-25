@@ -79,10 +79,11 @@ function useFirebaseStatus(){
 // and syncs to/from Firestore in real time (collection "tourdesk", doc <key>, field "data").
 function useSyncedState(key,initial,opts){
   const sync=(!opts||opts.sync!==false); // sync:false → solo en memoria (sin localStorage ni Firestore)
+  const dbKey=((typeof ACTIVE_WS!=="undefined"&&ACTIVE_WS&&ACTIVE_WS.prefix)||"")+key; // aísla los datos por espacio de trabajo (multi-cliente)
   const [value,setValue]=React.useState(()=>{
     if(!sync) return typeof initial==="function"?initial():initial;
     try{
-      const saved=localStorage.getItem(key);
+      const saved=localStorage.getItem(dbKey);
       if(saved){
         const parsed=JSON.parse(saved);
         if(Array.isArray(parsed)?parsed.length>0:parsed!=null) return parsed;
@@ -99,13 +100,13 @@ function useSyncedState(key,initial,opts){
   // Write to localStorage on every change
   React.useEffect(()=>{
     if(!sync) return;
-    try{ localStorage.setItem(key,JSON.stringify(value)); }catch(e){}
+    try{ localStorage.setItem(dbKey,JSON.stringify(value)); }catch(e){}
   },[key,value,sync]);
 
   // Subscribe to Firestore changes (real-time)
   React.useEffect(()=>{
     if(!sync||!fbDb) return;
-    const ref=fbDb.collection("tourdesk").doc(key);
+    const ref=fbDb.collection("tourdesk").doc(dbKey);
     const unsub=ref.onSnapshot({includeMetadataChanges:false},function(snap){
       if(!snap.exists) return;
       const remote=snap.data().data;
@@ -128,7 +129,7 @@ function useSyncedState(key,initial,opts){
       const nextJson=JSON.stringify(next);
       lastWritten.current=nextJson;
       if(sync&&fbDb){
-        fbDb.collection("tourdesk").doc(key).set({data:next,updatedAt:Date.now()})
+        fbDb.collection("tourdesk").doc(dbKey).set({data:next,updatedAt:Date.now()})
           .catch(function(err){ console.warn("Firestore write error ("+key+")",err); });
       }
       return next;
@@ -150,7 +151,7 @@ const BASE_TEAM=[
 // Se reconstruye en cada render con applyCustomTeam().
 let TEAM=BASE_TEAM.slice();
 function applyCustomTeam(custom){
-  const arr=BASE_TEAM.slice();
+  const arr=((typeof ACTIVE_WS!=="undefined"&&ACTIVE_WS&&ACTIVE_WS.baseTeam)||BASE_TEAM).slice();
   if(Array.isArray(custom)) custom.forEach(function(m){
     if(m&&m.id&&!arr.some(function(x){return x.id===m.id;})) arr.push({id:m.id,name:m.name,initials:m.initials,color:m.color,bg:m.bg});
   });
@@ -173,7 +174,7 @@ const BASE_SHOW_RATES={
   hades: {fee:350, rental:0,   label:"Show Hades 66"},
 };
 let SHOW_RATES={...BASE_SHOW_RATES};
-const CREW_RATES={
+let CREW_RATES={
   w1: 200, // Andrés Hernández
   w2: 250, // Miguel García
 };
@@ -196,8 +197,8 @@ const ARTIST_PALETTE=[
 // Se llama en el render de AdminApp/WorkerApp para que TODOS los componentes
 // (que leen ARTISTS/SHOW_RATES directamente) vean los artistas añadidos.
 function applyCustomArtists(custom){
-  const obj={...BASE_ARTISTS};
-  const rates={...BASE_SHOW_RATES};
+  const obj={...((typeof ACTIVE_WS!=="undefined"&&ACTIVE_WS&&ACTIVE_WS.baseArtists)||BASE_ARTISTS)};
+  const rates={...((typeof ACTIVE_WS!=="undefined"&&ACTIVE_WS&&ACTIVE_WS.baseRates)||BASE_SHOW_RATES)};
   if(custom&&typeof custom==="object"){
     Object.keys(custom).forEach(function(k){
       const a=custom[k]; if(!a) return;
@@ -217,15 +218,15 @@ function applyCustomArtists(custom){
 // ── Google Calendar: feed .ics público publicado en Firebase Storage ──
 // Se sube en /calendars/offstage-shows.ics y se suscribe UNA vez en Google
 // Calendar (Desde URL). El enlace es fijo; el contenido se actualiza solo.
-var GCAL_PATH="calendars/offstage-shows.ics";
-var GCAL_URL="https://firebasestorage.googleapis.com/v0/b/"+firebaseConfig.storageBucket+"/o/"+encodeURIComponent(GCAL_PATH)+"?alt=media";
+function gcalPath(){ return (typeof ACTIVE_WS!=="undefined"&&ACTIVE_WS&&ACTIVE_WS.icsPath)||"calendars/offstage-shows.ics"; }
+function gcalUrl(){ return "https://firebasestorage.googleapis.com/v0/b/"+firebaseConfig.storageBucket+"/o/"+encodeURIComponent(gcalPath())+"?alt=media"; }
 function icsEsc(s){ return String(s==null?"":s).replace(/\\/g,"\\\\").replace(/;/g,"\\;").replace(/,/g,"\\,").replace(/\r?\n/g,"\\n"); }
 function icsDay(iso){ return String(iso||"").replace(/-/g,""); } // "2026-08-31" -> "20260831"
 function icsNextDay(iso){ var d=new Date(iso+"T12:00:00"); d.setDate(d.getDate()+1); return d.getFullYear()+String(d.getMonth()+1).padStart(2,"0")+String(d.getDate()).padStart(2,"0"); }
 function icsStamp(){ var n=new Date(); function p(x){return String(x).padStart(2,"0");} return n.getUTCFullYear()+p(n.getUTCMonth()+1)+p(n.getUTCDate())+"T"+p(n.getUTCHours())+p(n.getUTCMinutes())+p(n.getUTCSeconds())+"Z"; }
 function buildShowsICS(shows){
   var stamp=icsStamp(), L=[];
-  L.push("BEGIN:VCALENDAR","VERSION:2.0","PRODID:-//OffStage//TourDesk//ES","CALSCALE:GREGORIAN","METHOD:PUBLISH","X-WR-CALNAME:OffStage · Shows","X-WR-TIMEZONE:Europe/Madrid","X-PUBLISHED-TTL:PT1H","REFRESH-INTERVAL;VALUE=DURATION:PT1H");
+  L.push("BEGIN:VCALENDAR","VERSION:2.0","PRODID:-//OffStage//TourDesk//ES","CALSCALE:GREGORIAN","METHOD:PUBLISH","X-WR-CALNAME:"+((typeof ACTIVE_WS!=="undefined"&&ACTIVE_WS&&ACTIVE_WS.calName)||"OffStage · Shows"),"X-WR-TIMEZONE:Europe/Madrid","X-PUBLISHED-TTL:PT1H","REFRESH-INTERVAL;VALUE=DURATION:PT1H");
   (Array.isArray(shows)?shows:[]).filter(function(s){return s&&s.date;}).forEach(function(s){
     var art=(ARTISTS[s.artist]&&ARTISTS[s.artist].name)||s.artist||"Show";
     var title=art+(s.city?(" · "+s.city):"");
@@ -245,7 +246,7 @@ function buildShowsICS(shows){
 }
 function uploadShowsICS(shows){
   if(!fbStorage) return Promise.reject(new Error("Storage no disponible"));
-  return fbStorage.ref(GCAL_PATH).putString(buildShowsICS(shows),"raw",{contentType:"text/calendar; charset=utf-8",cacheControl:"public,max-age=300"}).then(function(){ return GCAL_URL; });
+  return fbStorage.ref(gcalPath()).putString(buildShowsICS(shows),"raw",{contentType:"text/calendar; charset=utf-8",cacheControl:"public,max-age=300"}).then(function(){ return gcalUrl(); });
 }
 
 const ALL_SHOWS=[
@@ -994,7 +995,7 @@ const OFFICE_QUICK=[
   {e:"🚨",l:"Aviso urgente cambio horario",p:"Redacta un mensaje urgente notificando un cambio de horario en el soundcheck."},
 ];
 function OfficePanel(){
-  const [msgs,setMsgs]=React.useState([{role:"assistant",content:"Buenos días. Soy tu oficina virtual — conozco al detalle los riders de Luar La L y Hades 66.\n\nPuedo redactarte emails, WhatsApp y responder comunicaciones de promotoras. Pega cualquier mensaje recibido y te doy la respuesta lista.\n\n¿Por dónde empezamos?"}]);
+  const [msgs,setMsgs]=React.useState([{role:"assistant",content:((typeof ACTIVE_WS!=="undefined"&&ACTIVE_WS&&ACTIVE_WS.officeIntro)||"Buenos días. Soy tu oficina virtual — conozco al detalle los riders de Luar La L y Hades 66.\n\nPuedo redactarte emails, WhatsApp y responder comunicaciones de promotoras. Pega cualquier mensaje recibido y te doy la respuesta lista.\n\n¿Por dónde empezamos?")}]);
   const [input,setInput]=React.useState("");
   const [loading,setLoading]=React.useState(false);
   const [oTab,setOTab]=React.useState("chat");
@@ -1005,7 +1006,7 @@ function OfficePanel(){
     setInput(""); setOTab("chat");
     const nm=[...msgs,{role:"user",content:t}]; setMsgs(nm); setLoading(true);
     try{
-      const r=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json","anthropic-dangerous-request-source":"artifact"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:1000,system:OFFICE_SYS,messages:nm.map(m=>({role:m.role,content:m.content}))})});
+      const r=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json","anthropic-dangerous-request-source":"artifact"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:1000,system:((typeof ACTIVE_WS!=="undefined"&&ACTIVE_WS&&ACTIVE_WS.officeSys)||OFFICE_SYS),messages:nm.map(m=>({role:m.role,content:m.content}))})});
       const d=await r.json();
       setMsgs(p=>[...p,{role:"assistant",content:d.content?.map(b=>b.text||"").join("")||"Sin respuesta."}]);
     }catch{setMsgs(p=>[...p,{role:"assistant",content:"Error de conexión. Intenta de nuevo."}]);}
@@ -1018,7 +1019,7 @@ function OfficePanel(){
     oTab==="quick"&&React.createElement("div",{style:{flex:1,overflow:"auto",padding:"13px 14px 30px",background:"#0a0a0a"}},
       React.createElement("div",{style:{fontSize:12,color:"#666666",marginBottom:12}},"Toca una acción y el agente la ejecuta con los datos reales de tus riders:"),
       React.createElement("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:9}},
-        OFFICE_QUICK.map((a,i)=>React.createElement("button",{key:i,onClick:()=>send(a.p),style:{background:"#111111",border:"1px solid #1e1e1e",borderRadius:13,padding:"13px 11px",textAlign:"left",cursor:"pointer",display:"flex",flexDirection:"column",gap:7}},React.createElement("span",{style:{fontSize:20}},a.e),React.createElement("span",{style:{fontSize:11,fontWeight:600,color:"#f0ebe4",lineHeight:1.35}},a.l)))
+        ((typeof ACTIVE_WS!=="undefined"&&ACTIVE_WS&&ACTIVE_WS.officeQuick)||OFFICE_QUICK).map((a,i)=>React.createElement("button",{key:i,onClick:()=>send(a.p),style:{background:"#111111",border:"1px solid #1e1e1e",borderRadius:13,padding:"13px 11px",textAlign:"left",cursor:"pointer",display:"flex",flexDirection:"column",gap:7}},React.createElement("span",{style:{fontSize:20}},a.e),React.createElement("span",{style:{fontSize:11,fontWeight:600,color:"#f0ebe4",lineHeight:1.35}},a.l)))
       )
     ),
     oTab==="chat"&&React.createElement("div",{style:{flex:1,overflow:"auto",padding:"14px 14px 6px",background:"#0a0a0a"}},
@@ -1538,11 +1539,12 @@ function ConflictsPanel({shows,conflicts,setShows}){
 // role: "admin"=acceso total · "socio"=todo menos Finanzas · "worker"=vista técnico.
 // finance:false oculta Y bloquea Finanzas para esa cuenta (Miguel es socio).
 const USERS_BY_EMAIL={
-  "andres@weareoffstage.pro": {name:"Andrés Ortiz",  role:"admin", memberId:"yo", finance:true,  initials:"YO",color:"#E03A38",bg:"#1a0a0a"},
-  "andres@weareoffstage.com": {name:"Andrés Ortiz",  role:"admin", memberId:"yo", finance:true,  initials:"YO",color:"#E03A38",bg:"#1a0a0a"}, // respaldo temporal — se puede quitar cuando el login con .pro esté confirmado
-  "allnightproducer@gmail.com": {name:"Miguel García", role:"socio", memberId:"w2", finance:false, initials:"MG",color:"#7C3AED",bg:"#EDE9FE"},
-  // Andrés Hernández (w1): sin cuenta por ahora — no trabaja actualmente con OffStage.
-  // Sus shows ya asignados siguen visibles; se pueden reasignar desde el panel.
+  "andres@weareoffstage.pro": {name:"Andrés Ortiz",  role:"admin", workspace:"offstage", memberId:"yo", finance:true,  initials:"YO",color:"#E03A38",bg:"#1a0a0a"},
+  "andres@weareoffstage.com": {name:"Andrés Ortiz",  role:"admin", workspace:"offstage", memberId:"yo", finance:true,  initials:"YO",color:"#E03A38",bg:"#1a0a0a"}, // respaldo temporal
+  "allnightproducer@gmail.com": {name:"Miguel García", role:"socio", workspace:"offstage", memberId:"w2", finance:false, initials:"MG",color:"#7C3AED",bg:"#EDE9FE"},
+  // ── FBT · cliente piloto (Federico) ──────────────────────────────
+  "federico@aliveproductions.com.co": {name:"Federico", role:"admin", workspace:"fbt", memberId:"yo", finance:true, initials:"FB", color:"#F59E0B", bg:"#1a1405"},
+  // Andrés Hernández (w1): sin cuenta por ahora.
 };
 function userForEmail(email){
   if(!email) return null;
@@ -1550,6 +1552,34 @@ function userForEmail(email){
   const k=Object.keys(USERS_BY_EMAIL).find(function(x){return x.toLowerCase()===lc;});
   return k?USERS_BY_EMAIL[k]:null;
 }
+
+// ── ESPACIOS DE TRABAJO (multi-cliente) ─────────────────────────────
+// Cada empresa que se une tiene su propio espacio, con su data aislada
+// (docs con su prefijo). La marca siempre es OffStage: "TourDesk X by OffStage".
+const OFFICE_SYS_GENERIC="Eres el asistente de oficina virtual de una productora de giras. Ayudas a redactar emails y WhatsApp profesionales para promotoras, venues y equipo: confirmaciones de show, solicitudes de rider/counter-rider, logistica, hoteles y transporte. Responde en espanol. Para emails incluye ASUNTO y CUERPO; para WhatsApp se breve y directo. Pide siempre los datos que falten (artista, fecha, ciudad, venue, contacto) antes de redactar y NO inventes datos tecnicos ni de contacto.";
+const OFFICE_QUICK_GENERIC=[
+  {e:"📧",l:"Email confirmar un show",p:"Necesito un email a una promotora confirmando un show. Pideme artista, fecha, ciudad, venue y los datos que falten."},
+  {e:"📋",l:"Solicitar counter-rider",p:"Redacta un email solicitando el counter-rider al venue para verificar el equipo disponible."},
+  {e:"💬",l:"WhatsApp a promotora",p:"Redacta un WhatsApp corto y directo para una promotora sobre un show. Pideme los datos."},
+  {e:"🏨",l:"Recordatorio hotel/transporte",p:"Redacta un email recordando los requerimientos de hotel y transporte de un show proximo. Pideme los datos."},
+  {e:"🚨",l:"Aviso cambio de horario",p:"Redacta un mensaje urgente notificando un cambio de horario en el soundcheck o el show."},
+  {e:"📝",l:"Responder email recibido",p:"Voy a pegarte un email recibido. Ayudame a redactar una respuesta profesional."},
+];
+const WORKSPACES={
+  offstage:{ id:"offstage", prefix:"", name:"OffStage", title:"TourDesk Pro", tag:"OFFSTAGE",
+    baseArtists:BASE_ARTISTS, baseRates:BASE_SHOW_RATES, crewRates:CREW_RATES, baseTeam:BASE_TEAM,
+    icsPath:"calendars/offstage-shows.ics", calName:"OffStage · Shows",
+    seed:true, extraTabs:{libres:true, marketing:true},
+    officeSys:OFFICE_SYS, officeQuick:OFFICE_QUICK },
+  fbt:{ id:"fbt", prefix:"fbt__", name:"FBT", title:"TourDesk FBT", tag:"FBT · BY OFFSTAGE",
+    baseArtists:{}, baseRates:{}, crewRates:{}, baseTeam:[{id:"yo",name:"Yo",initials:"YO",color:"#F59E0B",bg:"#1a1405"}],
+    icsPath:"calendars/fbt-shows.ics", calName:"FBT · Shows",
+    seed:false, extraTabs:{},
+    officeSys:OFFICE_SYS_GENERIC, officeQuick:OFFICE_QUICK_GENERIC,
+    officeIntro:"Hola. Soy tu oficina virtual de FBT — te ayudo a redactar emails y WhatsApp para promotoras, venues y equipo. Pega cualquier mensaje recibido y te doy la respuesta lista. ¿Por dónde empezamos?" },
+};
+var ACTIVE_WS=WORKSPACES.offstage; // se fija segun el usuario en el login (App)
+function setActiveWorkspace(wsId){ ACTIVE_WS=WORKSPACES[wsId]||WORKSPACES.offstage; CREW_RATES=(ACTIVE_WS.crewRates||{}); return ACTIVE_WS; }
 
 // ── STATE MANAGER (outside React) ──────────────────────────
 let _currentUser = null;
@@ -1789,7 +1819,7 @@ function LibresPanel({shows}){
 }
 
 function GCalPanel({shows,gcal,onRefresh}){
-  const url=GCAL_URL;
+  const url=gcalUrl();
   const count=(Array.isArray(shows)?shows:[]).filter(function(s){return s&&s.date;}).length;
   const g=gcal||{};
   const whenTxt=g.when?new Date(g.when).toLocaleString("es-ES",{day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"}):"—";
@@ -1838,15 +1868,15 @@ function AdminApp({user, onLogout}){
     localStorage.setItem("td_dark",dark?"1":"0");
   },[dark]);
   const [shows,setShows]=useSyncedState("td_shows",()=>{
-    if(Array.isArray(ALL_SHOWS)&&ALL_SHOWS.length>0) return ALL_SHOWS;
+    if(ACTIVE_WS&&ACTIVE_WS.seed&&Array.isArray(ALL_SHOWS)&&ALL_SHOWS.length>0) return ALL_SHOWS;
     return [];
   });
   const [cases,setCases]=useSyncedState("td_cases",()=>{
-    if(Array.isArray(INITIAL_CASES)&&INITIAL_CASES.length>0) return INITIAL_CASES;
+    if(ACTIVE_WS&&ACTIVE_WS.seed&&Array.isArray(INITIAL_CASES)&&INITIAL_CASES.length>0) return INITIAL_CASES;
     return [];
   });
   const [finances,setFinances]=useSyncedState("td_finances",()=>{
-    if(Array.isArray(INITIAL_FINANCES)) return INITIAL_FINANCES;
+    if(ACTIVE_WS&&ACTIVE_WS.seed&&Array.isArray(INITIAL_FINANCES)) return INITIAL_FINANCES;
     return [];
   },{sync:canFinance});
   // Trabajadores para nómina (solo admin; privado, ni Miguel lo descarga).
@@ -1875,7 +1905,7 @@ function AdminApp({user, onLogout}){
     return function(){ clearTimeout(t); };
   },[shows]);
   const [tab,setTab]=React.useState("shows");
-  const todayMktg=MKTG.filter(e=>isToday(e.date));
+  const todayMktg=((ACTIVE_WS&&ACTIVE_WS.extraTabs&&ACTIVE_WS.extraTabs.marketing)?MKTG.filter(e=>isToday(e.date)):[]);
   const conflicts=React.useMemo(()=>{
     const ids=new Set();const byDate={};
     shows.forEach(s=>{if(!byDate[s.date])byDate[s.date]=[];byDate[s.date].push(s);});
@@ -1883,15 +1913,16 @@ function AdminApp({user, onLogout}){
     return ids;
   },[shows]);
   const confDays=[...new Set(shows.filter(s=>conflicts.has(s.id)).map(s=>s.date))].length;
-  const TABS=[{id:"shows",l:"📋"},{id:"libres",l:"🌴"},{id:"gcal",l:"📅"},{id:"conflicts",l:"⚡"+confDays},{id:"marketing",l:"📣"},{id:"office",l:"🏢"},{id:"material",l:"📦"}].concat(canFinance?[{id:"finance",l:"💰"}]:[]).concat([{id:"stats",l:"📊"}]);
+  const _wsx=(ACTIVE_WS&&ACTIVE_WS.extraTabs)||{};
+  const TABS=[{id:"shows",l:"📋"}].concat(_wsx.libres?[{id:"libres",l:"🌴"}]:[]).concat([{id:"gcal",l:"📅"},{id:"conflicts",l:"⚡"+confDays}]).concat(_wsx.marketing?[{id:"marketing",l:"📣"}]:[]).concat([{id:"office",l:"🏢"},{id:"material",l:"📦"}]).concat(canFinance?[{id:"finance",l:"💰"}]:[]).concat([{id:"stats",l:"📊"}]);
   const hdr="#111"; const tbar=dark?"#111":"#fff"; const tbdr=dark?"#2a2a2a":"#f3f4f6";
   return React.createElement("div",{style:{display:"flex",flexDirection:"column",height:"100dvh",width:"100%",background:dark?"#050505":"#0d0d0d"}},
     React.createElement("div",{style:{background:hdr,padding:"12px 15px",display:"flex",alignItems:"center",gap:10,paddingTop:"max(12px,env(safe-area-inset-top))"}},
       React.createElement("div",{style:{width:36,height:36,borderRadius:0,background:"#E03A38",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontFamily:"Bebas Neue,sans-serif",letterSpacing:2,color:"#fff",fontWeight:400}},"OS"),
       React.createElement("div",{style:{flex:1}},
-        React.createElement("div",{style:{fontSize:14,fontWeight:700,color:"#fff",fontFamily:"Bebas Neue,system-ui,sans-serif",letterSpacing:2}},"TourDesk Pro"),
+        React.createElement("div",{style:{fontSize:14,fontWeight:700,color:"#fff",fontFamily:"Bebas Neue,system-ui,sans-serif",letterSpacing:2}},((ACTIVE_WS&&ACTIVE_WS.title)||"TourDesk")),
         React.createElement("div",{style:{display:"flex",alignItems:"center",gap:5}},
-          React.createElement("div",{style:{fontSize:8,color:"#E03A38",letterSpacing:2,textTransform:"uppercase",fontFamily:"DM Sans,sans-serif"}},"OFFSTAGE · "+shows.length+" SHOWS"),
+          React.createElement("div",{style:{fontSize:8,color:"#E03A38",letterSpacing:2,textTransform:"uppercase",fontFamily:"DM Sans,sans-serif"}},((ACTIVE_WS&&ACTIVE_WS.tag)||"OFFSTAGE")+" · "+shows.length+" SHOWS"),
           React.createElement("span",{onClick:()=>{if(syncError) alert("Firebase: "+syncError);},title:syncStatus==="online"?"Sincronizado":syncStatus==="connecting"?"Conectando...":syncStatus==="error"?("Error: "+syncError):"Sin conexión",style:{width:6,height:6,borderRadius:"50%",background:syncStatus==="online"?"#16a34a":syncStatus==="connecting"?"#d97706":syncStatus==="error"?"#ef4444":"#555",flexShrink:0,cursor:syncError?"pointer":"default"}})
         )
       ),
@@ -1917,7 +1948,7 @@ function AdminApp({user, onLogout}){
 // ── WORKER APP
 function WorkerApp({user, onLogout}){
   const [shows]=useSyncedState("td_shows",()=>{
-    if(Array.isArray(ALL_SHOWS)&&ALL_SHOWS.length>0) return ALL_SHOWS;
+    if(ACTIVE_WS&&ACTIVE_WS.seed&&Array.isArray(ALL_SHOWS)&&ALL_SHOWS.length>0) return ALL_SHOWS;
     return [];
   });
   const [customArtists]=useSyncedState("td_artists",{});
@@ -1950,6 +1981,7 @@ function App(){
       React.createElement("button",{onClick:logout,style:{marginTop:6,padding:"11px 22px",borderRadius:10,border:"1px solid #2a2a2a",background:"#1a1a1a",color:"#f0ebe4",fontWeight:600,fontSize:13,cursor:"pointer"}},"Salir")
     );
   }
+  setActiveWorkspace(profile.workspace); // fija el espacio (OffStage / FBT / …) antes de renderizar
   if(profile.role==="worker") return React.createElement(WorkerApp,{user:profile,onLogout:logout});
   return React.createElement(AdminApp,{user:profile,onLogout:logout});
 }
