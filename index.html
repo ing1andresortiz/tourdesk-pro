@@ -501,6 +501,466 @@ function DaySheet(props){
   );
 }
 
+// ── MÓDULO DE DINERO: FACTURAS + LIQUIDACIÓN ──────────────────
+// Documentos imprimibles (reusa CSS @media print de .ds-print) y copiables a WhatsApp.
+function money(n,cur){
+  var c=((cur||"EUR")+"").toUpperCase();
+  var num=(Number(n)||0).toLocaleString("es-ES",{minimumFractionDigits:0,maximumFractionDigits:2});
+  if(c==="EUR") return num+" €";
+  var pre={USD:"US$ ",COP:"$ ",MXN:"MX$ ",GBP:"£ ",ARS:"AR$ ",CLP:"$ ",PEN:"S/ ",BRL:"R$ "}[c];
+  return pre?pre+num:num+" "+c;
+}
+var CURRENCIES=[["EUR","Euro €"],["COP","Peso colombiano $"],["USD","Dólar US$"],["MXN","Peso mexicano"],["ARS","Peso argentino"],["CLP","Peso chileno"],["PEN","Sol S/"],["GBP","Libra £"]];
+function todayISO(){ try{ var d=new Date(); return new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().slice(0,10); }catch(e){ return ""; } }
+function invTotals(inv){
+  var items=Array.isArray(inv.items)?inv.items:[];
+  var sub=items.reduce(function(s,it){return s+(Number(it.qty)||0)*(Number(it.price)||0);},0);
+  var iva=sub*(Number(inv.ivaPct)||0)/100;
+  var ret=sub*(Number(inv.retPct)||0)/100;
+  return {sub:sub,iva:iva,ret:ret,total:sub+iva-ret};
+}
+function totRow(l,v){ return React.createElement("div",{style:{display:"flex",justifyContent:"space-between",padding:"3px 0",fontSize:13,color:"#444"}},React.createElement("span",null,l),React.createElement("span",{style:{fontWeight:600}},v)); }
+
+function invoiceText(inv,biz){
+  biz=biz||{}; var t=invTotals(inv); var cur=inv.currency||biz.defaultCurrency||"EUR";
+  var L=[];
+  L.push((biz.name?biz.name:"FACTURA"));
+  if(biz.taxId) L.push("NIF/NIT: "+biz.taxId);
+  L.push("");
+  L.push("FACTURA "+(inv.number||""));
+  if(inv.date) L.push("Fecha: "+inv.date);
+  if(inv.dueDate) L.push("Vence: "+inv.dueDate);
+  L.push("");
+  if(inv.client&&inv.client.name){ L.push("Cliente: "+inv.client.name); if(inv.client.taxId) L.push("NIF/NIT: "+inv.client.taxId); }
+  if(inv.event) L.push("Concepto: "+inv.event);
+  L.push("——————————————");
+  (inv.items||[]).forEach(function(it){ if(!it.desc&&!it.price&&!it.qty) return; L.push("• "+(it.desc||"")+"  "+(Number(it.qty)||1)+" x "+money(it.price,cur)+" = "+money((Number(it.qty)||0)*(Number(it.price)||0),cur)); });
+  L.push("——————————————");
+  L.push("Subtotal: "+money(t.sub,cur));
+  if(Number(inv.ivaPct)) L.push("IVA ("+inv.ivaPct+"%): "+money(t.iva,cur));
+  if(Number(inv.retPct)) L.push("Retención ("+inv.retPct+"%): -"+money(t.ret,cur));
+  L.push("TOTAL: "+money(t.total,cur));
+  if(biz.bank){ L.push(""); L.push("Pago: "+biz.bank); }
+  if(inv.notes){ L.push(""); L.push(inv.notes); }
+  return L.join("\n");
+}
+
+function InvoiceDoc(props){
+  var inv=props.invoice, biz=props.biz||{}, onClose=props.onClose;
+  var stc=React.useState(false), copied=stc[0], setCopied=stc[1];
+  var t=invTotals(inv); var cur=inv.currency||biz.defaultCurrency||"EUR";
+  var copy=function(){ try{ navigator.clipboard.writeText(invoiceText(inv,biz)); setCopied(true); setTimeout(function(){setCopied(false);},2000);}catch(e){ alert("No se pudo copiar."); } };
+  var lbl=function(s){ return React.createElement("div",{style:{fontSize:10,fontWeight:800,letterSpacing:1.5,color:"#E03A38",textTransform:"uppercase",marginBottom:6}},s); };
+  var items=Array.isArray(inv.items)?inv.items.filter(function(it){return it.desc||it.price||it.qty;}):[];
+  return React.createElement("div",{onClick:onClose,style:{position:"fixed",inset:0,background:"rgba(0,0,0,.7)",zIndex:300,display:"flex",alignItems:"flex-start",justifyContent:"center",overflow:"auto",padding:"14px 12px 40px"}},
+    React.createElement("div",{className:"ds-print",onClick:function(e){e.stopPropagation();},style:{background:"#fff",borderRadius:14,padding:"22px 22px 28px",width:"100%",maxWidth:560,color:"#111"}},
+      React.createElement("div",{className:"ds-noprint",style:{display:"flex",justifyContent:"flex-end",gap:8,marginBottom:8}},
+        React.createElement("button",{onClick:copy,style:{fontSize:12,fontWeight:700,border:"none",borderRadius:8,padding:"7px 12px",background:copied?"#16a34a":"#25D366",color:"#fff",cursor:"pointer"}},copied?"✓ Copiado":"📋 WhatsApp"),
+        React.createElement("button",{onClick:function(){window.print();},style:{fontSize:12,fontWeight:700,border:"1px solid #ddd",borderRadius:8,padding:"7px 12px",background:"#f5f5f5",color:"#333",cursor:"pointer"}},"🖨 PDF / Imprimir"),
+        React.createElement("button",{onClick:onClose,style:{fontSize:16,border:"none",borderRadius:8,padding:"4px 10px",background:"#f0f0f0",color:"#666",cursor:"pointer"}},"×")
+      ),
+      React.createElement("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:12}},
+        React.createElement("div",{style:{minWidth:0}},
+          React.createElement("div",{style:{fontSize:22,fontWeight:800,color:"#111",lineHeight:1.1}},biz.name||"Tu empresa"),
+          biz.taxId?React.createElement("div",{style:{fontSize:12,color:"#666",marginTop:3}},"NIF/NIT: "+biz.taxId):null,
+          biz.address?React.createElement("div",{style:{fontSize:12,color:"#666",marginTop:1}},biz.address):null,
+          (biz.email||biz.phone)?React.createElement("div",{style:{fontSize:12,color:"#666",marginTop:1}},[biz.email,biz.phone].filter(Boolean).join(" · ")):null
+        ),
+        React.createElement("div",{style:{textAlign:"right",flexShrink:0}},
+          React.createElement("div",{style:{fontSize:9,letterSpacing:2,color:"#E03A38",fontWeight:800,textTransform:"uppercase"}},"Factura"),
+          React.createElement("div",{style:{fontSize:16,fontWeight:800,color:"#111"}},inv.number||""),
+          inv.date?React.createElement("div",{style:{fontSize:12,color:"#666",marginTop:2}},"Fecha: "+inv.date):null,
+          inv.dueDate?React.createElement("div",{style:{fontSize:12,color:"#666"}},"Vence: "+inv.dueDate):null
+        )
+      ),
+      React.createElement("div",{style:{height:1,background:"#eee",margin:"16px 0"}}),
+      React.createElement("div",{style:{marginBottom:14}},
+        lbl("Facturar a"),
+        React.createElement("div",{style:{fontSize:15,fontWeight:700,color:"#111"}},(inv.client&&inv.client.name)||"—"),
+        (inv.client&&inv.client.taxId)?React.createElement("div",{style:{fontSize:12,color:"#666"}},"NIF/NIT: "+inv.client.taxId):null,
+        (inv.client&&inv.client.address)?React.createElement("div",{style:{fontSize:12,color:"#666"}},inv.client.address):null
+      ),
+      inv.event?React.createElement("div",{style:{marginBottom:14}},lbl("Concepto"),React.createElement("div",{style:{fontSize:13,color:"#222"}},inv.event)):null,
+      React.createElement("div",{style:{border:"1px solid #eee",borderRadius:10,overflow:"hidden"}},
+        React.createElement("div",{style:{display:"flex",background:"#f7f7f7",padding:"8px 12px",fontSize:10,fontWeight:800,color:"#888",textTransform:"uppercase",letterSpacing:1}},
+          React.createElement("div",{style:{flex:1}},"Descripción"),
+          React.createElement("div",{style:{width:40,textAlign:"center"}},"Cant"),
+          React.createElement("div",{style:{width:80,textAlign:"right"}},"Precio"),
+          React.createElement("div",{style:{width:86,textAlign:"right"}},"Importe")
+        ),
+        items.length?items.map(function(it,i){ return React.createElement("div",{key:i,style:{display:"flex",padding:"9px 12px",fontSize:13,color:"#222",borderTop:i?"1px solid #f2f2f2":"none"}},
+          React.createElement("div",{style:{flex:1}},it.desc||""),
+          React.createElement("div",{style:{width:40,textAlign:"center"}},Number(it.qty)||1),
+          React.createElement("div",{style:{width:80,textAlign:"right"}},money(it.price,cur)),
+          React.createElement("div",{style:{width:86,textAlign:"right",fontWeight:600}},money((Number(it.qty)||0)*(Number(it.price)||0),cur))
+        ); }):React.createElement("div",{style:{padding:"12px",fontSize:12,color:"#999"}},"Sin líneas")
+      ),
+      React.createElement("div",{style:{marginTop:14,marginLeft:"auto",width:"100%",maxWidth:260}},
+        totRow("Subtotal",money(t.sub,cur)),
+        Number(inv.ivaPct)?totRow("IVA ("+inv.ivaPct+"%)",money(t.iva,cur)):null,
+        Number(inv.retPct)?totRow("Retención ("+inv.retPct+"%)","-"+money(t.ret,cur)):null,
+        React.createElement("div",{style:{display:"flex",justifyContent:"space-between",padding:"9px 0 0",marginTop:6,borderTop:"2px solid #111"}},
+          React.createElement("span",{style:{fontSize:14,fontWeight:800,color:"#111"}},"TOTAL"),
+          React.createElement("span",{style:{fontSize:18,fontWeight:800,color:"#111"}},money(t.total,cur))
+        )
+      ),
+      biz.bank?React.createElement("div",{style:{marginTop:18}},lbl("Datos de pago"),React.createElement("div",{style:{fontSize:12.5,color:"#333",whiteSpace:"pre-wrap"}},biz.bank)):null,
+      inv.notes?React.createElement("div",{style:{marginTop:14,fontSize:12,color:"#666",whiteSpace:"pre-wrap",borderTop:"1px solid #eee",paddingTop:12}},inv.notes):null
+    )
+  );
+}
+
+// ── LIQUIDACIÓN DE PERSONAL ──────────────────────────────────
+function settleTotals(st){ var items=Array.isArray(st.items)?st.items:[]; return items.reduce(function(s,it){return s+(Number(it.amount)||0);},0); }
+function settleText(st,biz){
+  biz=biz||{}; var cur=st.currency||biz.defaultCurrency||"EUR"; var L=[];
+  L.push((biz.name?biz.name:"")+(biz.name?" · ":"")+"LIQUIDACIÓN");
+  L.push("Trabajador: "+(st.workerName||""));
+  if(st.period) L.push("Periodo: "+st.period);
+  if(st.date) L.push("Fecha: "+st.date);
+  L.push("——————————————");
+  (st.items||[]).forEach(function(it){ if(!it.desc&&!it.amount) return; L.push("• "+(it.desc||"")+": "+money(it.amount,cur)); });
+  L.push("——————————————");
+  L.push("TOTAL A PAGAR: "+money(settleTotals(st),cur));
+  if(st.notes){ L.push(""); L.push(st.notes); }
+  return L.join("\n");
+}
+function SettlementDoc(props){
+  var st=props.settlement, biz=props.biz||{}, onClose=props.onClose;
+  var stc=React.useState(false), copied=stc[0], setCopied=stc[1];
+  var cur=st.currency||biz.defaultCurrency||"EUR"; var total=settleTotals(st);
+  var copy=function(){ try{ navigator.clipboard.writeText(settleText(st,biz)); setCopied(true); setTimeout(function(){setCopied(false);},2000);}catch(e){ alert("No se pudo copiar."); } };
+  var items=Array.isArray(st.items)?st.items.filter(function(it){return it.desc||it.amount;}):[];
+  return React.createElement("div",{onClick:onClose,style:{position:"fixed",inset:0,background:"rgba(0,0,0,.7)",zIndex:300,display:"flex",alignItems:"flex-start",justifyContent:"center",overflow:"auto",padding:"14px 12px 40px"}},
+    React.createElement("div",{className:"ds-print",onClick:function(e){e.stopPropagation();},style:{background:"#fff",borderRadius:14,padding:"22px 22px 28px",width:"100%",maxWidth:520,color:"#111"}},
+      React.createElement("div",{className:"ds-noprint",style:{display:"flex",justifyContent:"flex-end",gap:8,marginBottom:8}},
+        React.createElement("button",{onClick:copy,style:{fontSize:12,fontWeight:700,border:"none",borderRadius:8,padding:"7px 12px",background:copied?"#16a34a":"#25D366",color:"#fff",cursor:"pointer"}},copied?"✓ Copiado":"📋 WhatsApp"),
+        React.createElement("button",{onClick:function(){window.print();},style:{fontSize:12,fontWeight:700,border:"1px solid #ddd",borderRadius:8,padding:"7px 12px",background:"#f5f5f5",color:"#333",cursor:"pointer"}},"🖨 PDF / Imprimir"),
+        React.createElement("button",{onClick:onClose,style:{fontSize:16,border:"none",borderRadius:8,padding:"4px 10px",background:"#f0f0f0",color:"#666",cursor:"pointer"}},"×")
+      ),
+      React.createElement("div",{style:{fontSize:9,letterSpacing:2,color:"#E03A38",fontWeight:800,textTransform:"uppercase"}},"Liquidación de personal"),
+      React.createElement("div",{style:{fontSize:24,fontWeight:800,color:"#111",lineHeight:1.1,marginTop:2}},st.workerName||""),
+      st.period?React.createElement("div",{style:{fontSize:13,color:"#555",marginTop:3}},"Periodo: "+st.period):null,
+      biz.name?React.createElement("div",{style:{fontSize:12,color:"#888",marginTop:2}},biz.name):null,
+      React.createElement("div",{style:{height:1,background:"#eee",margin:"16px 0"}}),
+      React.createElement("div",{style:{border:"1px solid #eee",borderRadius:10,overflow:"hidden"}},
+        items.length?items.map(function(it,i){ return React.createElement("div",{key:i,style:{display:"flex",justifyContent:"space-between",padding:"10px 13px",fontSize:13.5,color:"#222",borderTop:i?"1px solid #f2f2f2":"none"}},
+          React.createElement("div",{style:{flex:1,paddingRight:10}},it.desc||""),
+          React.createElement("div",{style:{fontWeight:600,color:(Number(it.amount)||0)<0?"#c0392b":"#111"}},money(it.amount,cur))
+        ); }):React.createElement("div",{style:{padding:"12px",fontSize:12,color:"#999"}},"Sin conceptos")
+      ),
+      React.createElement("div",{style:{display:"flex",justifyContent:"space-between",padding:"12px 2px 0",marginTop:8,borderTop:"2px solid #111"}},
+        React.createElement("span",{style:{fontSize:14,fontWeight:800,color:"#111"}},"TOTAL A PAGAR"),
+        React.createElement("span",{style:{fontSize:20,fontWeight:800,color:"#16a34a"}},money(total,cur))
+      ),
+      st.notes?React.createElement("div",{style:{marginTop:14,fontSize:12,color:"#666",whiteSpace:"pre-wrap",borderTop:"1px solid #eee",paddingTop:12}},st.notes):null
+    )
+  );
+}
+
+// ── PANEL 🧾 FACTURAS ─────────────────────────────────────────
+function InvoicesPanel(props){
+  var invoices=Array.isArray(props.invoices)?props.invoices:[];
+  var setInvoices=props.setInvoices;
+  var biz=props.biz||{}; var setBiz=props.setBiz;
+  var settlements=Array.isArray(props.settlements)?props.settlements:[];
+  var setSettlements=props.setSettlements;
+  var shows=Array.isArray(props.shows)?props.shows:[];
+  var workers=Array.isArray(props.workers)?props.workers:[];
+
+  var s1=React.useState("inv"), sec=s1[0], setSec=s1[1];               // inv | settle | biz
+  var s2=React.useState(null), editInv=s2[0], setEditInv=s2[1];         // factura en edición
+  var s3=React.useState(null), docInv=s3[0], setDocInv=s3[1];           // factura en vista/preview
+  var s4=React.useState(null), editSt=s4[0], setEditSt=s4[1];           // liquidación en edición
+  var s5=React.useState(null), docSt=s5[0], setDocSt=s5[1];             // liquidación en vista
+
+  // ── Inputs reutilizables (tema oscuro del panel) ──
+  var inStyle={width:"100%",padding:"10px 11px",borderRadius:8,border:"1px solid #2a2a2a",background:"#1a1a1a",color:"#f0ebe4",fontSize:13,fontFamily:"DM Sans,sans-serif",boxSizing:"border-box",outline:"none"};
+  var fld=function(label,val,onCh,ph,type){ return React.createElement("div",{style:{marginBottom:11}},
+    React.createElement("div",{style:{fontSize:10,color:"#777",fontWeight:700,marginBottom:4,textTransform:"uppercase",letterSpacing:.5}},label),
+    React.createElement("input",{type:type||"text",value:(val==null?"":val),onChange:function(e){onCh(e.target.value);},placeholder:ph||"",style:inStyle})); };
+  var card=function(children){ return React.createElement("div",{style:{background:"#111111",borderRadius:12,padding:"15px 15px",border:"1px solid #1e1e1e",marginBottom:12}},children); };
+  var sectionTitle=function(t){ return React.createElement("div",{style:{fontSize:10,fontWeight:800,color:"#555",textTransform:"uppercase",letterSpacing:1,marginBottom:10}},t); };
+
+  // ── Perfil de empresa ──
+  var updBiz=function(patch){ if(setBiz) setBiz(Object.assign({},biz,patch)); };
+
+  // ── FACTURAS: helpers ──
+  var nextNumber=function(){
+    var year=(new Date()).getFullYear();
+    var pref=(biz.invoicePrefix||(typeof ACTIVE_WS!=="undefined"&&ACTIVE_WS&&ACTIVE_WS.code)||"F");
+    var base=pref+"-"+year+"-";
+    var n=0; invoices.forEach(function(x){ var m=(x.number||"").match(new RegExp("^"+pref.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")+"-"+year+"-(\\d+)$")); if(m){ var v=parseInt(m[1],10); if(v>n) n=v; } });
+    return base+String(n+1).padStart(3,"0");
+  };
+  var newInvoice=function(){
+    var cur=biz.defaultCurrency||"EUR";
+    setEditInv({ id:"inv"+Date.now(), number:nextNumber(), date:todayISO(), dueDate:"",
+      client:{name:"",taxId:"",address:""}, event:"",
+      items:[{desc:"",qty:1,price:""}],
+      ivaPct:(biz.defaultIva!=null&&biz.defaultIva!==""?biz.defaultIva:(cur==="EUR"?21:0)),
+      retPct:(biz.defaultRet!=null&&biz.defaultRet!==""?biz.defaultRet:0),
+      currency:cur, notes:(biz.notes||""), status:"draft" });
+  };
+  var saveInvoice=function(){
+    if(!setInvoices||!editInv) return;
+    var exists=invoices.some(function(x){return x.id===editInv.id;});
+    setInvoices(exists?invoices.map(function(x){return x.id===editInv.id?editInv:x;}):invoices.concat([editInv]));
+    setEditInv(null);
+  };
+  var delInvoice=function(id,label){ if(!setInvoices) return; if(window.confirm("¿Borrar la factura "+(label||"")+"?")){ setInvoices(invoices.filter(function(x){return x.id!==id;})); setEditInv(null); } };
+  var updInv=function(patch){ setEditInv(Object.assign({},editInv,patch)); };
+  var updItem=function(i,patch){ var items=editInv.items.map(function(it,x){return x===i?Object.assign({},it,patch):it;}); updInv({items:items}); };
+  var addItem=function(){ updInv({items:editInv.items.concat([{desc:"",qty:1,price:""}])}); };
+  var rmItem=function(i){ updInv({items:editInv.items.filter(function(_,x){return x!==i;})}); };
+
+  var STATUS={draft:{l:"Borrador",c:"#888",b:"#222"},sent:{l:"Enviada",c:"#d97706",b:"#2a1e0a"},paid:{l:"Pagada",c:"#16a34a",b:"#0a1a0a"}};
+
+  // ── LIQUIDACIONES: helpers ──
+  var newSettlement=function(wk){
+    var cur=biz.defaultCurrency||"EUR";
+    var items=[];
+    if(wk){
+      var mine=shows.filter(function(s){return Array.isArray(s.assigned)&&s.assigned.indexOf(wk.id)>=0;})
+        .sort(function(a,b){return (a.date||"").localeCompare(b.date||"");});
+      mine.forEach(function(s){
+        var an=(typeof ARTISTS!=="undefined"&&ARTISTS[s.artist]&&ARTISTS[s.artist].name)||s.artist||"Show";
+        var where=[s.city,s.date].filter(Boolean).join(" · ");
+        items.push({desc:an+(where?" · "+where:""),amount:(Number(wk.rate)||0)});
+      });
+    }
+    if(!items.length) items.push({desc:"",amount:""});
+    setEditSt({ id:"st"+Date.now(), workerId:wk?wk.id:"", workerName:wk?wk.name:"", period:"", date:todayISO(), items:items, currency:cur, notes:"", status:"pending" });
+  };
+  var saveSettlement=function(){
+    if(!setSettlements||!editSt) return;
+    var exists=settlements.some(function(x){return x.id===editSt.id;});
+    setSettlements(exists?settlements.map(function(x){return x.id===editSt.id?editSt:x;}):settlements.concat([editSt]));
+    setEditSt(null);
+  };
+  var delSettlement=function(id){ if(!setSettlements) return; if(window.confirm("¿Borrar esta liquidación?")){ setSettlements(settlements.filter(function(x){return x.id!==id;})); setEditSt(null); } };
+  var updSt=function(patch){ setEditSt(Object.assign({},editSt,patch)); };
+  var updStItem=function(i,patch){ updSt({items:editSt.items.map(function(it,x){return x===i?Object.assign({},it,patch):it;})}); };
+  var addStItem=function(){ updSt({items:editSt.items.concat([{desc:"",amount:""}])}); };
+  var rmStItem=function(i){ updSt({items:editSt.items.filter(function(_,x){return x!==i;})}); };
+
+  var wrap=function(children){ return React.createElement("div",{style:{flex:1,overflow:"auto",padding:"14px 14px 90px",background:"#0a0a0a"}},children); };
+  var overlay=React.createElement(React.Fragment,null,
+    docInv&&React.createElement(InvoiceDoc,{invoice:docInv,biz:biz,onClose:function(){setDocInv(null);}}),
+    docSt&&React.createElement(SettlementDoc,{settlement:docSt,biz:biz,onClose:function(){setDocSt(null);}})
+  );
+
+  // ══ EDITOR DE FACTURA ══
+  if(sec==="inv"&&editInv){
+    var t=invTotals(editInv); var cur=editInv.currency||biz.defaultCurrency||"EUR";
+    return React.createElement(React.Fragment,null,wrap(React.createElement("div",null,
+      React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:14}},
+        React.createElement("button",{onClick:function(){setEditInv(null);},style:{background:"none",border:"none",color:"#888",fontSize:13,cursor:"pointer",fontWeight:600}},"‹ Cancelar"),
+        React.createElement("div",{style:{fontSize:13,fontWeight:800,color:"#f0ebe4"}},editInv.number),
+        React.createElement("button",{onClick:saveInvoice,style:{background:"#E03A38",border:"none",borderRadius:8,color:"#fff",fontSize:13,fontWeight:700,padding:"8px 15px",cursor:"pointer"}},"Guardar")
+      ),
+      card(React.createElement("div",null,sectionTitle("Cliente"),
+        fld("Nombre / empresa",editInv.client.name,function(v){updInv({client:Object.assign({},editInv.client,{name:v})});},"Ej: Alive Productions S.A.S"),
+        fld("NIF / NIT / CIF",editInv.client.taxId,function(v){updInv({client:Object.assign({},editInv.client,{taxId:v})});},""),
+        fld("Dirección",editInv.client.address,function(v){updInv({client:Object.assign({},editInv.client,{address:v})});},"")
+      )),
+      card(React.createElement("div",null,sectionTitle("Datos de la factura"),
+        React.createElement("div",{style:{display:"flex",gap:9}},
+          React.createElement("div",{style:{flex:1}},fld("Nº factura",editInv.number,function(v){updInv({number:v});},"")),
+          React.createElement("div",{style:{flex:1}},fld("Fecha",editInv.date,function(v){updInv({date:v});},"","date"))
+        ),
+        React.createElement("div",{style:{display:"flex",gap:9}},
+          React.createElement("div",{style:{flex:1}},fld("Vencimiento",editInv.dueDate,function(v){updInv({dueDate:v});},"","date")),
+          React.createElement("div",{style:{flex:1}},
+            React.createElement("div",{style:{fontSize:10,color:"#777",fontWeight:700,marginBottom:4,textTransform:"uppercase",letterSpacing:.5}},"Moneda"),
+            React.createElement("select",{value:cur,onChange:function(e){updInv({currency:e.target.value});},style:inStyle},CURRENCIES.map(function(c){return React.createElement("option",{key:c[0],value:c[0]},c[1]);}))
+          )
+        ),
+        fld("Concepto / evento",editInv.event,function(v){updInv({event:v});},"Ej: Producción técnica gira 2026")
+      )),
+      card(React.createElement("div",null,sectionTitle("Líneas"),
+        editInv.items.map(function(it,i){ return React.createElement("div",{key:i,style:{marginBottom:10,paddingBottom:10,borderBottom:i<editInv.items.length-1?"1px solid #1a1a1a":"none"}},
+          React.createElement("input",{value:it.desc||"",onChange:function(e){updItem(i,{desc:e.target.value});},placeholder:"Descripción",style:Object.assign({},inStyle,{marginBottom:6})}),
+          React.createElement("div",{style:{display:"flex",gap:6,alignItems:"center"}},
+            React.createElement("input",{type:"number",value:(it.qty==null?"":it.qty),onChange:function(e){updItem(i,{qty:e.target.value});},placeholder:"Cant",style:Object.assign({},inStyle,{width:60,textAlign:"center"})}),
+            React.createElement("span",{style:{color:"#555"}},"×"),
+            React.createElement("input",{type:"number",value:(it.price==null?"":it.price),onChange:function(e){updItem(i,{price:e.target.value});},placeholder:"Precio",style:Object.assign({},inStyle,{flex:1})}),
+            React.createElement("div",{style:{minWidth:78,textAlign:"right",fontSize:12,color:"#aaa",fontWeight:600}},money((Number(it.qty)||0)*(Number(it.price)||0),cur)),
+            React.createElement("button",{onClick:function(){rmItem(i);},style:{background:"none",border:"none",color:"#8a4a4a",fontSize:18,cursor:"pointer",padding:"0 2px"}},"×")
+          )
+        ); }),
+        React.createElement("button",{onClick:addItem,style:{width:"100%",marginTop:4,padding:"9px",borderRadius:8,border:"1px dashed #333",background:"transparent",color:"#888",fontSize:12,fontWeight:600,cursor:"pointer"}},"+ Añadir línea")
+      )),
+      card(React.createElement("div",null,sectionTitle("Impuestos"),
+        React.createElement("div",{style:{display:"flex",gap:9}},
+          React.createElement("div",{style:{flex:1}},fld("IVA %",editInv.ivaPct,function(v){updInv({ivaPct:v});},"21","number")),
+          React.createElement("div",{style:{flex:1}},fld("Retención %",editInv.retPct,function(v){updInv({retPct:v});},"0","number"))
+        ),
+        React.createElement("div",{style:{marginTop:4}},
+          totRowD("Subtotal",money(t.sub,cur)),
+          Number(editInv.ivaPct)?totRowD("IVA ("+editInv.ivaPct+"%)",money(t.iva,cur)):null,
+          Number(editInv.retPct)?totRowD("Retención ("+editInv.retPct+"%)","-"+money(t.ret,cur)):null,
+          React.createElement("div",{style:{display:"flex",justifyContent:"space-between",padding:"9px 0 0",marginTop:6,borderTop:"1px solid #2a2a2a"}},
+            React.createElement("span",{style:{fontSize:14,fontWeight:800,color:"#f0ebe4"}},"TOTAL"),
+            React.createElement("span",{style:{fontSize:18,fontWeight:800,color:"#16a34a"}},money(t.total,cur))
+          )
+        )
+      )),
+      card(React.createElement("div",null,sectionTitle("Estado y notas"),
+        React.createElement("div",{style:{display:"flex",gap:7,marginBottom:12}},
+          ["draft","sent","paid"].map(function(k){ var on=editInv.status===k; return React.createElement("button",{key:k,onClick:function(){updInv({status:k});},style:{flex:1,padding:"8px 4px",borderRadius:8,border:on?"2px solid "+STATUS[k].c:"1px solid #2a2a2a",background:on?STATUS[k].b:"#1a1a1a",color:on?STATUS[k].c:"#888",fontWeight:700,fontSize:11.5,cursor:"pointer"}},STATUS[k].l); })
+        ),
+        React.createElement("textarea",{value:editInv.notes||"",onChange:function(e){updInv({notes:e.target.value});},placeholder:"Notas / condiciones de pago",rows:3,style:Object.assign({},inStyle,{resize:"vertical",fontFamily:"DM Sans,sans-serif"})})
+      )),
+      React.createElement("div",{style:{display:"flex",gap:9,marginTop:4}},
+        React.createElement("button",{onClick:function(){setDocInv(editInv);},style:{flex:1,padding:"12px",borderRadius:10,border:"1px solid #263042",background:"#0f1622",color:"#cfe0ff",fontWeight:700,fontSize:13,cursor:"pointer"}},"👁 Ver documento"),
+        React.createElement("button",{onClick:function(){delInvoice(editInv.id,editInv.number);},style:{padding:"12px 16px",borderRadius:10,border:"1px solid #3a1a1a",background:"#1a0a0a",color:"#c0392b",fontWeight:700,fontSize:13,cursor:"pointer"}},"Borrar")
+      )
+    )),overlay);
+  }
+
+  // ══ EDITOR DE LIQUIDACIÓN ══
+  if(sec==="settle"&&editSt){
+    var stTotal=settleTotals(editSt); var curS=editSt.currency||biz.defaultCurrency||"EUR";
+    return React.createElement(React.Fragment,null,wrap(React.createElement("div",null,
+      React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:14}},
+        React.createElement("button",{onClick:function(){setEditSt(null);},style:{background:"none",border:"none",color:"#888",fontSize:13,cursor:"pointer",fontWeight:600}},"‹ Cancelar"),
+        React.createElement("div",{style:{fontSize:13,fontWeight:800,color:"#f0ebe4"}},"Liquidación"),
+        React.createElement("button",{onClick:saveSettlement,style:{background:"#E03A38",border:"none",borderRadius:8,color:"#fff",fontSize:13,fontWeight:700,padding:"8px 15px",cursor:"pointer"}},"Guardar")
+      ),
+      card(React.createElement("div",null,
+        fld("Trabajador",editSt.workerName,function(v){updSt({workerName:v});},"Nombre"),
+        React.createElement("div",{style:{display:"flex",gap:9}},
+          React.createElement("div",{style:{flex:1}},fld("Periodo",editSt.period,function(v){updSt({period:v});},"Ej: Agosto 2026")),
+          React.createElement("div",{style:{flex:1}},fld("Fecha",editSt.date,function(v){updSt({date:v});},"","date"))
+        )
+      )),
+      card(React.createElement("div",null,sectionTitle("Conceptos"),
+        React.createElement("div",{style:{fontSize:10,color:"#555",marginBottom:10}},"Usa importes negativos para adelantos o deducciones (ej: -100)."),
+        editSt.items.map(function(it,i){ return React.createElement("div",{key:i,style:{display:"flex",gap:6,alignItems:"center",marginBottom:8}},
+          React.createElement("input",{value:it.desc||"",onChange:function(e){updStItem(i,{desc:e.target.value});},placeholder:"Concepto",style:Object.assign({},inStyle,{flex:1})}),
+          React.createElement("input",{type:"number",value:(it.amount==null?"":it.amount),onChange:function(e){updStItem(i,{amount:e.target.value});},placeholder:"€",style:Object.assign({},inStyle,{width:88,textAlign:"right"})}),
+          React.createElement("button",{onClick:function(){rmStItem(i);},style:{background:"none",border:"none",color:"#8a4a4a",fontSize:18,cursor:"pointer",padding:"0 2px"}},"×")
+        ); }),
+        React.createElement("button",{onClick:addStItem,style:{width:"100%",marginTop:4,padding:"9px",borderRadius:8,border:"1px dashed #333",background:"transparent",color:"#888",fontSize:12,fontWeight:600,cursor:"pointer"}},"+ Añadir concepto"),
+        React.createElement("div",{style:{display:"flex",justifyContent:"space-between",padding:"11px 0 0",marginTop:10,borderTop:"1px solid #2a2a2a"}},
+          React.createElement("span",{style:{fontSize:14,fontWeight:800,color:"#f0ebe4"}},"TOTAL A PAGAR"),
+          React.createElement("span",{style:{fontSize:18,fontWeight:800,color:"#16a34a"}},money(stTotal,curS))
+        )
+      )),
+      card(React.createElement("div",null,sectionTitle("Notas"),
+        React.createElement("textarea",{value:editSt.notes||"",onChange:function(e){updSt({notes:e.target.value});},placeholder:"Método de pago, observaciones…",rows:2,style:Object.assign({},inStyle,{resize:"vertical",fontFamily:"DM Sans,sans-serif"})})
+      )),
+      React.createElement("div",{style:{display:"flex",gap:9,marginTop:4}},
+        React.createElement("button",{onClick:function(){setDocSt(editSt);},style:{flex:1,padding:"12px",borderRadius:10,border:"1px solid #263042",background:"#0f1622",color:"#cfe0ff",fontWeight:700,fontSize:13,cursor:"pointer"}},"👁 Ver documento"),
+        React.createElement("button",{onClick:function(){delSettlement(editSt.id);},style:{padding:"12px 16px",borderRadius:10,border:"1px solid #3a1a1a",background:"#1a0a0a",color:"#c0392b",fontWeight:700,fontSize:13,cursor:"pointer"}},"Borrar")
+      )
+    )),overlay);
+  }
+
+  // ══ VISTA PRINCIPAL (con sub-pestañas) ══
+  var tabBtn=function(id,label){ var on=sec===id; return React.createElement("button",{onClick:function(){setSec(id);},style:{flex:1,padding:"9px 4px",borderRadius:9,border:"none",background:on?"#E03A38":"#161616",color:on?"#fff":"#888",fontWeight:700,fontSize:12,cursor:"pointer"}},label); };
+
+  var body;
+  if(sec==="biz"){
+    body=React.createElement("div",null,
+      card(React.createElement("div",null,sectionTitle("Datos de tu empresa (emisor)"),
+        React.createElement("div",{style:{fontSize:11,color:"#666",marginBottom:12}},"Estos datos salen en todas tus facturas y liquidaciones. Se guardan solo en tu espacio."),
+        fld("Nombre / razón social",biz.name,function(v){updBiz({name:v});},"Ej: FBT Producciones"),
+        fld("NIF / NIT / CIF",biz.taxId,function(v){updBiz({taxId:v});},""),
+        fld("Dirección",biz.address,function(v){updBiz({address:v});},""),
+        React.createElement("div",{style:{display:"flex",gap:9}},
+          React.createElement("div",{style:{flex:1}},fld("Email",biz.email,function(v){updBiz({email:v});},"","email")),
+          React.createElement("div",{style:{flex:1}},fld("Teléfono",biz.phone,function(v){updBiz({phone:v});},""))
+        ),
+        React.createElement("div",{style:{fontSize:10,color:"#777",fontWeight:700,marginBottom:4,textTransform:"uppercase",letterSpacing:.5}},"Datos de pago (banco / cuenta)"),
+        React.createElement("textarea",{value:biz.bank||"",onChange:function(e){updBiz({bank:e.target.value});},placeholder:"IBAN / nº de cuenta / Bizum…",rows:2,style:Object.assign({},inStyle,{resize:"vertical",marginBottom:11,fontFamily:"DM Sans,sans-serif"})})
+      )),
+      card(React.createElement("div",null,sectionTitle("Valores por defecto"),
+        React.createElement("div",{style:{display:"flex",gap:9}},
+          React.createElement("div",{style:{flex:1}},
+            React.createElement("div",{style:{fontSize:10,color:"#777",fontWeight:700,marginBottom:4,textTransform:"uppercase",letterSpacing:.5}},"Moneda"),
+            React.createElement("select",{value:biz.defaultCurrency||"EUR",onChange:function(e){updBiz({defaultCurrency:e.target.value});},style:inStyle},CURRENCIES.map(function(c){return React.createElement("option",{key:c[0],value:c[0]},c[1]);}))
+          ),
+          React.createElement("div",{style:{flex:1}},fld("IVA % defecto",biz.defaultIva,function(v){updBiz({defaultIva:v});},"21","number")),
+          React.createElement("div",{style:{flex:1}},fld("Retención %",biz.defaultRet,function(v){updBiz({defaultRet:v});},"0","number"))
+        ),
+        React.createElement("div",{style:{display:"flex",gap:9}},
+          React.createElement("div",{style:{flex:1}},fld("Prefijo de nº",biz.invoicePrefix,function(v){updBiz({invoicePrefix:v});},(typeof ACTIVE_WS!=="undefined"&&ACTIVE_WS&&ACTIVE_WS.code)||"F"))
+        ),
+        React.createElement("div",{style:{fontSize:10,color:"#777",fontWeight:700,marginBottom:4,textTransform:"uppercase",letterSpacing:.5}},"Notas por defecto"),
+        React.createElement("textarea",{value:biz.notes||"",onChange:function(e){updBiz({notes:e.target.value});},placeholder:"Ej: Pago a 30 días. Gracias por tu confianza.",rows:2,style:Object.assign({},inStyle,{resize:"vertical",fontFamily:"DM Sans,sans-serif"})})
+      ))
+    );
+  } else if(sec==="settle"){
+    var withRate=workers.filter(function(w){return w;});
+    body=React.createElement("div",null,
+      card(React.createElement("div",null,sectionTitle("Nueva liquidación"),
+        React.createElement("div",{style:{fontSize:11,color:"#666",marginBottom:12}},"Elige un trabajador y te precargo sus shows asignados × su caché. Luego lo ajustas."),
+        withRate.length?withRate.map(function(w){ var cnt=shows.filter(function(s){return Array.isArray(s.assigned)&&s.assigned.indexOf(w.id)>=0;}).length; return React.createElement("button",{key:w.id,onClick:function(){newSettlement(w);},style:{display:"flex",width:"100%",alignItems:"center",gap:10,padding:"10px 11px",borderRadius:9,border:"1px solid #222",background:"#161616",marginBottom:7,cursor:"pointer",textAlign:"left"}},
+          React.createElement("div",{style:{flex:1}},
+            React.createElement("div",{style:{fontSize:13.5,fontWeight:700,color:"#f0ebe4"}},w.name),
+            React.createElement("div",{style:{fontSize:11,color:"#666"}},cnt+" show"+(cnt===1?"":"s")+" · "+money(w.rate,biz.defaultCurrency||"EUR")+"/show")
+          ),
+          React.createElement("span",{style:{fontSize:11,color:"#E03A38",fontWeight:700}},"Liquidar ›")
+        ); }):React.createElement("div",{style:{fontSize:12,color:"#666"}},"Añade trabajadores en la pestaña 💰 (con su caché por show) y aparecerán aquí."),
+        React.createElement("button",{onClick:function(){newSettlement(null);},style:{width:"100%",marginTop:6,padding:"10px",borderRadius:9,border:"1px dashed #333",background:"transparent",color:"#888",fontSize:12,fontWeight:600,cursor:"pointer"}},"+ Liquidación en blanco")
+      )),
+      settlements.length?card(React.createElement("div",null,sectionTitle("Liquidaciones guardadas"),
+        settlements.slice().sort(function(a,b){return (b.date||"").localeCompare(a.date||"");}).map(function(st){ return React.createElement("div",{key:st.id,onClick:function(){setEditSt(st);},style:{display:"flex",alignItems:"center",gap:10,padding:"10px 2px",borderBottom:"1px solid #1a1a1a",cursor:"pointer"}},
+          React.createElement("div",{style:{flex:1,minWidth:0}},
+            React.createElement("div",{style:{fontSize:13,fontWeight:700,color:"#f0ebe4"}},st.workerName||"—"),
+            React.createElement("div",{style:{fontSize:11,color:"#666"}},[st.period,st.date].filter(Boolean).join(" · "))
+          ),
+          React.createElement("div",{style:{fontSize:14,fontWeight:800,color:"#16a34a"}},money(settleTotals(st),st.currency||biz.defaultCurrency||"EUR")),
+          React.createElement("button",{onClick:function(e){e.stopPropagation();setDocSt(st);},style:{background:"#0f1622",border:"1px solid #263042",borderRadius:7,color:"#cfe0ff",fontSize:11,fontWeight:700,padding:"6px 9px",cursor:"pointer"}},"👁")
+        ); })
+      )):null
+    );
+  } else { // sec==="inv"
+    var sorted=invoices.slice().sort(function(a,b){return (b.date||"").localeCompare(a.date||"");});
+    var totBilled=invoices.reduce(function(s,x){return s+invTotals(x).total;},0);
+    var totPaid=invoices.filter(function(x){return x.status==="paid";}).reduce(function(s,x){return s+invTotals(x).total;},0);
+    var curD=biz.defaultCurrency||"EUR";
+    body=React.createElement("div",null,
+      React.createElement("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:9,marginBottom:12}},
+        React.createElement("div",{style:{background:"#111",borderRadius:11,padding:13,border:"1px solid #1e1e1e"}},
+          React.createElement("div",{style:{fontSize:11,color:"#555",fontWeight:600,marginBottom:4}},"Facturado"),
+          React.createElement("div",{style:{fontSize:20,fontWeight:800,color:"#f0ebe4"}},money(totBilled,curD))
+        ),
+        React.createElement("div",{style:{background:"#111",borderRadius:11,padding:13,border:"1px solid #1e1e1e"}},
+          React.createElement("div",{style:{fontSize:11,color:"#555",fontWeight:600,marginBottom:4}},"Cobrado"),
+          React.createElement("div",{style:{fontSize:20,fontWeight:800,color:"#16a34a"}},money(totPaid,curD))
+        )
+      ),
+      React.createElement("button",{onClick:newInvoice,style:{width:"100%",padding:"13px",borderRadius:11,border:"none",background:"#E03A38",color:"#fff",fontWeight:800,fontSize:14,cursor:"pointer",marginBottom:13}},"+ Nueva factura"),
+      (!biz.name)?React.createElement("div",{style:{background:"#1a1206",border:"1px solid #3a2a0a",borderRadius:10,padding:"11px 13px",marginBottom:13,fontSize:12,color:"#d9a441"}},"⚠️ Configura los datos de tu empresa en la pestaña “Datos” para que salgan en la factura."):null,
+      sorted.length?sorted.map(function(x){ var st=STATUS[x.status]||STATUS.draft; var tt=invTotals(x); return React.createElement("div",{key:x.id,onClick:function(){setEditInv(x);},style:{display:"flex",alignItems:"center",gap:11,background:"#111",borderRadius:11,padding:"12px 13px",border:"1px solid #1e1e1e",marginBottom:8,cursor:"pointer"}},
+        React.createElement("div",{style:{flex:1,minWidth:0}},
+          React.createElement("div",{style:{fontSize:13.5,fontWeight:700,color:"#f0ebe4",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},(x.client&&x.client.name)||"Sin cliente"),
+          React.createElement("div",{style:{fontSize:11,color:"#666",marginTop:2}},(x.number||"")+(x.date?" · "+x.date:"")),
+          React.createElement("span",{style:{display:"inline-block",marginTop:5,fontSize:9.5,fontWeight:800,letterSpacing:.5,textTransform:"uppercase",color:st.c,background:st.b,borderRadius:5,padding:"2px 7px"}},st.l)
+        ),
+        React.createElement("div",{style:{textAlign:"right"}},
+          React.createElement("div",{style:{fontSize:15,fontWeight:800,color:"#f0ebe4"}},money(tt.total,x.currency||curD)),
+          React.createElement("button",{onClick:function(e){e.stopPropagation();setDocInv(x);},style:{marginTop:5,background:"#0f1622",border:"1px solid #263042",borderRadius:7,color:"#cfe0ff",fontSize:11,fontWeight:700,padding:"5px 9px",cursor:"pointer"}},"👁 Ver")
+        )
+      ); }):React.createElement("div",{style:{textAlign:"center",padding:"30px 0",color:"#555",fontSize:13}},"Aún no hay facturas. Crea la primera 👆")
+    );
+  }
+
+  return React.createElement(React.Fragment,null,wrap(React.createElement("div",null,
+    React.createElement("div",{style:{display:"flex",gap:7,marginBottom:14}},
+      tabBtn("inv","🧾 Facturas"),
+      tabBtn("settle","👷 Liquidación"),
+      tabBtn("biz","🏢 Datos")
+    ),
+    body
+  )),overlay);
+}
+function totRowD(l,v){ return React.createElement("div",{style:{display:"flex",justifyContent:"space-between",padding:"3px 0",fontSize:13,color:"#999"}},React.createElement("span",null,l),React.createElement("span",{style:{fontWeight:600,color:"#ccc"}},v)); }
+
+
 // ── ASSIGN MODAL ─────────────────────────────────────────────
 function AssignModal({show,onClose,onSave,onDelete,onAddArtist,onRemoveArtist,customArtists}){
   const isNew=!show.id;
@@ -2066,6 +2526,10 @@ function AdminApp({user, onLogout}){
   const [workers,setWorkers]=useSyncedState("td_workers",[],{sync:canFinance});
   const [team,setTeam]=useSyncedState("td_team",[]); // identidades de trabajadores (compartido, para asignarlos a shows)
   const [customArtists,setCustomArtists]=useSyncedState("td_artists",{});
+  // Módulo de dinero (solo admin; privado, ni Miguel lo descarga).
+  const [invoices,setInvoices]=useSyncedState("td_invoices",[],{sync:canFinance});
+  const [settlements,setSettlements]=useSyncedState("td_settlements",[],{sync:canFinance});
+  const [biz,setBiz]=useSyncedState("td_bizprofile",{},{sync:canFinance});
   applyCustomArtists(customArtists); // reconstruye ARTISTS/SHOW_RATES antes de renderizar hijos
   applyCustomTeam(team); // añade los trabajadores al TEAM para poder asignarlos a shows
   const addArtist=React.useCallback(function(key,data){
@@ -2097,7 +2561,7 @@ function AdminApp({user, onLogout}){
   },[shows]);
   const confDays=[...new Set(shows.filter(s=>conflicts.has(s.id)).map(s=>s.date))].length;
   const _wsx=(ACTIVE_WS&&ACTIVE_WS.extraTabs)||{};
-  const TABS=[{id:"shows",l:"📋"}].concat(_wsx.libres?[{id:"libres",l:"🌴"}]:[]).concat([{id:"gcal",l:"📅"},{id:"conflicts",l:"⚡"+confDays}]).concat(_wsx.marketing?[{id:"marketing",l:"📣"}]:[]).concat([{id:"office",l:"🏢"},{id:"material",l:"📦"},{id:"team",l:"👥"}]).concat(canFinance?[{id:"finance",l:"💰"}]:[]).concat([{id:"stats",l:"📊"}]);
+  const TABS=[{id:"shows",l:"📋"}].concat(_wsx.libres?[{id:"libres",l:"🌴"}]:[]).concat([{id:"gcal",l:"📅"},{id:"conflicts",l:"⚡"+confDays}]).concat(_wsx.marketing?[{id:"marketing",l:"📣"}]:[]).concat([{id:"office",l:"🏢"},{id:"material",l:"📦"},{id:"team",l:"👥"}]).concat(canFinance?[{id:"finance",l:"💰"},{id:"invoices",l:"🧾"}]:[]).concat([{id:"stats",l:"📊"}]);
   const hdr="#111"; const tbar=dark?"#111":"#fff"; const tbdr=dark?"#2a2a2a":"#f3f4f6";
   return React.createElement("div",{style:{display:"flex",flexDirection:"column",height:"100dvh",width:"100%",background:dark?"#050505":"#0d0d0d"}},
     React.createElement("div",{style:{background:hdr,padding:"12px 15px",display:"flex",alignItems:"center",gap:10,paddingTop:"max(12px,env(safe-area-inset-top))"}},
@@ -2125,6 +2589,7 @@ function AdminApp({user, onLogout}){
     tab==="material"&&React.createElement(MaterialPanel,{cases,setCases}),
     tab==="team"&&React.createElement(TeamPanel,{team,setTeam}),
     tab==="finance"&&canFinance&&React.createElement(FinancePanel,{finances,setFinances,shows,workers,setWorkers,setTeam,team}),
+    tab==="invoices"&&canFinance&&React.createElement(InvoicesPanel,{invoices,setInvoices,biz,setBiz,settlements,setSettlements,shows,workers,team}),
     tab==="stats"&&React.createElement(StatsPanel,{shows,conflicts})
   );
 }
