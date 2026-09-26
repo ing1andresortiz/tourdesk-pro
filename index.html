@@ -2005,6 +2005,43 @@ function GCalPanel({shows,gcal,onRefresh}){
   );
 }
 
+// ── PANEL EQUIPO · accesos por PIN de todo el crew ──────────────
+function TeamPanel({team,setTeam}){
+  const [copied,setCopied]=React.useState(null);
+  const [nm,setNm]=React.useState("");
+  const teamArr=Array.isArray(team)?team:[];
+  const pinOf=function(id){ var m=teamArr.find(function(x){return x.id===id;}); return m&&m.pin?m.pin:null; };
+  const copy=function(t,id){ try{ navigator.clipboard.writeText(t); setCopied(id); setTimeout(function(){setCopied(null);},1500); }catch(e){} };
+  const genFor=function(member){ if(!setTeam) return; setTeam(function(p){ var arr=Array.isArray(p)?p:[]; var exists=arr.find(function(m){return m.id===member.id;}); if(exists&&exists.pin) return arr; var pin=genPin(arr); if(exists){ return arr.map(function(m){ return m.id===member.id?Object.assign({},m,{pin:pin}):m; }); } return arr.concat([{id:member.id,name:member.name,initials:member.initials,color:member.color,bg:member.bg,pin:pin}]); }); };
+  const revoke=function(id){ if(!setTeam) return; if(!window.confirm("¿Revocar el acceso de este trabajador? Su código dejará de funcionar.")) return; setTeam(function(p){ return (Array.isArray(p)?p:[]).map(function(m){ return m.id===id?Object.assign({},m,{pin:null}):m; }); }); };
+  const addMember=function(){ var n=nm.trim(); if(!n||!setTeam) return; var parts=n.split(/\s+/).filter(Boolean); var initials=((parts.length>1?(parts[0][0]+parts[1][0]):n.slice(0,2))||"?").toUpperCase(); var pal=ARTIST_PALETTE[teamArr.length%ARTIST_PALETTE.length]; setTeam(function(p){ var arr=Array.isArray(p)?p:[]; var pin=genPin(arr); return arr.concat([{id:"m"+Date.now(),name:n,initials:initials,color:pal[0],bg:pal[1],pin:pin}]); }); setNm(""); };
+  var members=(typeof TEAM!=="undefined"?TEAM:[]);
+  return React.createElement("div",{style:{flex:1,overflow:"auto",padding:"14px 14px 80px",background:"#0a0a0a"}},
+    React.createElement("div",{style:{fontSize:10,fontWeight:700,color:"#555",textTransform:"uppercase",letterSpacing:1,marginBottom:4}},"👥 Equipo · accesos"),
+    React.createElement("div",{style:{fontSize:11,color:"#666",marginBottom:14,lineHeight:1.5}},"Genera el código de cada trabajador y compártelo por WhatsApp. Con ese código entra a la app y ve SOLO sus shows asignados."),
+    members.map(function(m){
+      var isMe=m.id==="yo";
+      var pin=pinOf(m.id);
+      var code=pin?workerCode(ACTIVE_WS.id,pin):null;
+      return React.createElement("div",{key:m.id,style:{display:"flex",alignItems:"center",gap:10,background:"#111",border:"1px solid #1e1e1e",borderRadius:11,padding:"11px 13px",marginBottom:8}},
+        React.createElement(Av,{m:m,sz:34}),
+        React.createElement("div",{style:{flex:1,minWidth:0}},
+          React.createElement("div",{style:{fontSize:14,fontWeight:600,color:"#f0ebe4",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},m.name),
+          isMe?React.createElement("div",{style:{fontSize:11,color:"#555",marginTop:2}},"Tú · entras con tu correo")
+            :(code?React.createElement("div",{onClick:function(){copy(code,m.id);},style:{fontSize:14,color:"#25D366",fontWeight:700,cursor:"pointer",fontFamily:"Bebas Neue,monospace",letterSpacing:2,marginTop:2}},"🔑 "+code+(copied===m.id?"  ✓":"  · copiar"))
+              :React.createElement("div",{style:{fontSize:11,color:"#888",marginTop:2}},"Sin acceso todavía"))
+        ),
+        isMe?null:(code?React.createElement("button",{onClick:function(){revoke(m.id);},style:{background:"none",border:"1px solid #3a2a2a",borderRadius:8,color:"#8a4a4a",fontSize:11,padding:"6px 10px",cursor:"pointer",whiteSpace:"nowrap"}},"Revocar")
+          :React.createElement("button",{onClick:function(){genFor(m);},style:{background:"#E03A38",border:"none",borderRadius:8,color:"#fff",fontSize:12,fontWeight:700,padding:"7px 12px",cursor:"pointer",whiteSpace:"nowrap"}},"Generar código"))
+      );
+    }),
+    React.createElement("div",{style:{display:"flex",gap:7,marginTop:12}},
+      React.createElement("input",{value:nm,onChange:function(e){setNm(e.target.value);},placeholder:"Nombre de nuevo trabajador",style:{flex:1,minWidth:0,padding:"10px 12px",borderRadius:9,border:"1px solid #2a2a2a",background:"#1a1a1a",color:"#f0ebe4",fontSize:13,fontFamily:"DM Sans,sans-serif"}}),
+      React.createElement("button",{disabled:!nm.trim(),onClick:addMember,style:{padding:"0 16px",borderRadius:9,border:"none",background:!nm.trim()?"#3a1414":"#E03A38",color:"#fff",fontWeight:700,fontSize:18,cursor:!nm.trim()?"default":"pointer",opacity:!nm.trim()?.6:1}},"+")
+    )
+  );
+}
+
 function AdminApp({user, onLogout}){
   const canFinance=(user&&user.finance!==false); // false para un socio (Miguel): oculta y NO descarga finanzas
   const [syncStatus,syncError]=useFirebaseStatus();
@@ -2060,7 +2097,7 @@ function AdminApp({user, onLogout}){
   },[shows]);
   const confDays=[...new Set(shows.filter(s=>conflicts.has(s.id)).map(s=>s.date))].length;
   const _wsx=(ACTIVE_WS&&ACTIVE_WS.extraTabs)||{};
-  const TABS=[{id:"shows",l:"📋"}].concat(_wsx.libres?[{id:"libres",l:"🌴"}]:[]).concat([{id:"gcal",l:"📅"},{id:"conflicts",l:"⚡"+confDays}]).concat(_wsx.marketing?[{id:"marketing",l:"📣"}]:[]).concat([{id:"office",l:"🏢"},{id:"material",l:"📦"}]).concat(canFinance?[{id:"finance",l:"💰"}]:[]).concat([{id:"stats",l:"📊"}]);
+  const TABS=[{id:"shows",l:"📋"}].concat(_wsx.libres?[{id:"libres",l:"🌴"}]:[]).concat([{id:"gcal",l:"📅"},{id:"conflicts",l:"⚡"+confDays}]).concat(_wsx.marketing?[{id:"marketing",l:"📣"}]:[]).concat([{id:"office",l:"🏢"},{id:"material",l:"📦"},{id:"team",l:"👥"}]).concat(canFinance?[{id:"finance",l:"💰"}]:[]).concat([{id:"stats",l:"📊"}]);
   const hdr="#111"; const tbar=dark?"#111":"#fff"; const tbdr=dark?"#2a2a2a":"#f3f4f6";
   return React.createElement("div",{style:{display:"flex",flexDirection:"column",height:"100dvh",width:"100%",background:dark?"#050505":"#0d0d0d"}},
     React.createElement("div",{style:{background:hdr,padding:"12px 15px",display:"flex",alignItems:"center",gap:10,paddingTop:"max(12px,env(safe-area-inset-top))"}},
@@ -2086,6 +2123,7 @@ function AdminApp({user, onLogout}){
     tab==="marketing"&&React.createElement(MktgPanel),
     tab==="office"&&React.createElement(OfficePanel),
     tab==="material"&&React.createElement(MaterialPanel,{cases,setCases}),
+    tab==="team"&&React.createElement(TeamPanel,{team,setTeam}),
     tab==="finance"&&canFinance&&React.createElement(FinancePanel,{finances,setFinances,shows,workers,setWorkers,setTeam,team}),
     tab==="stats"&&React.createElement(StatsPanel,{shows,conflicts})
   );
