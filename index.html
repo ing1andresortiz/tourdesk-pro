@@ -1307,12 +1307,18 @@ function CaseModal({caseData,onClose,onSave,onDelete}){
 }
 
 // ── FINANCE PANEL ─────────────────────────────────────────────
-function FinancePanel({finances,setFinances,shows,workers,setWorkers,setTeam}){
+function FinancePanel({finances,setFinances,shows,workers,setWorkers,setTeam,team}){
   const [editing,setEditing]=React.useState(null);
   const [filter,setFilter]=React.useState("all");
   const [nwName,setNwName]=React.useState("");
   const [nwRate,setNwRate]=React.useState("");
+  const [lastCode,setLastCode]=React.useState(null);
+  const [copiedCode,setCopiedCode]=React.useState(null);
   const workerList=Array.isArray(workers)?workers:[];
+  const teamArr=Array.isArray(team)?team:[];
+  const pinOf=function(id){ var m=teamArr.find(function(x){return x.id===id;}); return m&&m.pin?m.pin:null; };
+  const ensurePin=function(id){ if(!setTeam) return; setTeam(function(p){ var arr=Array.isArray(p)?p:[]; var cur=arr.find(function(m){return m.id===id;}); if(cur&&cur.pin) return arr; var pin=genPin(arr); return arr.map(function(m){ return m.id===id?Object.assign({},m,{pin:pin}):m; }); }); };
+  const copyCode=function(txt,id){ try{ navigator.clipboard.writeText(txt); setCopiedCode(id); setTimeout(function(){setCopiedCode(null);},1500); }catch(e){} };
 
   const income=finances.filter(f=>f.type==="income");
   const expense=finances.filter(f=>f.type==="expense");
@@ -1332,9 +1338,11 @@ function FinancePanel({finances,setFinances,shows,workers,setWorkers,setTeam}){
     const pal=ARTIST_PALETTE[workerList.length%ARTIST_PALETTE.length];
     const parts=nm.split(/\s+/).filter(Boolean);
     const initials=((parts.length>1?(parts[0][0]+parts[1][0]):nm.slice(0,2))||"?").toUpperCase();
+    const pin=genPin(teamArr);
     const w={id:"w"+Date.now(),name:nm,rate:Number(nwRate)||0,initials:initials,color:pal[0],bg:pal[1]};
     setWorkers(function(p){return [...(Array.isArray(p)?p:[]),w];});
-    if(setTeam) setTeam(function(p){return [...(Array.isArray(p)?p:[]),{id:w.id,name:w.name,initials:w.initials,color:w.color,bg:w.bg}];});
+    if(setTeam) setTeam(function(p){return [...(Array.isArray(p)?p:[]),{id:w.id,name:w.name,initials:w.initials,color:w.color,bg:w.bg,pin:pin}];});
+    setLastCode({name:nm,code:workerCode(ACTIVE_WS.id,pin)});
     setNwName(""); setNwRate("");
   };
   const updateWorkerRate=function(id,val){ if(!setWorkers) return; setWorkers(function(p){return (Array.isArray(p)?p:[]).map(function(w){return w.id===id?{...w,rate:Number(val)||0}:w;});}); };
@@ -1375,14 +1383,23 @@ function FinancePanel({finances,setFinances,shows,workers,setWorkers,setTeam}){
     // ── Trabajadores: añadir a quién pagas + su caché, y ver lo que te queda ──
     React.createElement("div",{style:{background:"#111111",borderRadius:11,padding:"13px 15px",border:"1px solid #1e1e1e",marginBottom:13}},
       React.createElement("div",{style:{fontSize:10,fontWeight:700,color:"#555555",textTransform:"uppercase",letterSpacing:1,marginBottom:4}},"👷 Trabajadores — sus pagos"),
-      React.createElement("div",{style:{fontSize:10,color:"#555",marginBottom:12}},"Añade a quién pagas y su caché por show. Márcalos como pagados en el Registro rápido de cada show."),
+      React.createElement("div",{style:{fontSize:10,color:"#555",marginBottom:12}},"Añade a quién pagas y su caché por show. Al agregarlo se genera su código de acceso para que entre y vea solo sus shows."),
+      lastCode&&React.createElement("div",{style:{background:"#0a1a0a",border:"1px solid #16a34a55",borderRadius:9,padding:"10px 12px",marginBottom:12}},
+        React.createElement("div",{style:{fontSize:11,color:"#16a34a",fontWeight:700,marginBottom:4}},"✅ "+lastCode.name+" agregado"),
+        React.createElement("div",{style:{fontSize:11,color:"#aaa",marginBottom:7}},"Comparte este código para que entre como trabajador:"),
+        React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8}},
+          React.createElement("div",{style:{flex:1,fontFamily:"Bebas Neue,monospace",letterSpacing:3,fontSize:22,color:"#f0ebe4",background:"#111",borderRadius:8,padding:"6px 12px",textAlign:"center"}},lastCode.code),
+          React.createElement("button",{onClick:function(){copyCode(lastCode.code,"last");},style:{padding:"8px 12px",borderRadius:8,border:"none",background:copiedCode==="last"?"#16a34a":"#25D366",color:"#fff",fontWeight:700,fontSize:12,cursor:"pointer",whiteSpace:"nowrap"}},copiedCode==="last"?"✓":"📋 Copiar")
+        )
+      ),
       workerList.length===0&&React.createElement("div",{style:{fontSize:12,color:"#666",padding:"2px 0 12px"}},"Aún no hay trabajadores. Añade el primero abajo 👇"),
       workerList.map(function(w){
         return React.createElement("div",{key:w.id,style:{display:"flex",alignItems:"center",gap:9,marginBottom:9}},
           React.createElement(Av,{m:w,sz:30}),
           React.createElement("div",{style:{flex:1,minWidth:0}},
             React.createElement("div",{style:{fontSize:13,fontWeight:600,color:"#f0ebe4",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},w.name),
-            React.createElement("div",{style:{fontSize:10,color:"#555"}},"Pagado: "+fmtMoney(workerPaid(w.id)))
+            React.createElement("div",{style:{fontSize:10,color:"#555"}},"Pagado: "+fmtMoney(workerPaid(w.id))),
+            pinOf(w.id)?React.createElement("div",{onClick:function(){copyCode(workerCode(ACTIVE_WS.id,pinOf(w.id)),w.id);},style:{fontSize:11,color:"#25D366",fontWeight:700,cursor:"pointer",marginTop:2}},"🔑 "+workerCode(ACTIVE_WS.id,pinOf(w.id))+(copiedCode===w.id?" ✓ copiado":" · copiar")):React.createElement("div",{onClick:function(){ensurePin(w.id);},style:{fontSize:11,color:"#888",fontWeight:600,cursor:"pointer",marginTop:2,textDecoration:"underline"}},"generar código de acceso")
           ),
           React.createElement("div",{style:{display:"flex",alignItems:"center",gap:2,background:"#1a1a1a",border:"1px solid #2a2a2a",borderRadius:8,padding:"3px 8px"}},
             React.createElement("input",{type:"number",min:0,value:w.rate,onChange:function(e){updateWorkerRate(w.id,e.target.value);},style:{width:48,background:"transparent",border:"none",color:"#f0ebe4",fontSize:13,fontWeight:700,outline:"none",textAlign:"right",fontFamily:"DM Sans,sans-serif"}}),
@@ -1672,12 +1689,12 @@ const OFFICE_QUICK_GENERIC=[
   {e:"📝",l:"Responder email recibido",p:"Voy a pegarte un email recibido. Ayudame a redactar una respuesta profesional."},
 ];
 const WORKSPACES={
-  offstage:{ id:"offstage", prefix:"", name:"OffStage", title:"TourDesk Pro", tag:"OFFSTAGE",
+  offstage:{ id:"offstage", prefix:"", name:"OffStage", title:"TourDesk Pro", tag:"OFFSTAGE", code:"OS",
     baseArtists:BASE_ARTISTS, baseRates:BASE_SHOW_RATES, crewRates:CREW_RATES, baseTeam:BASE_TEAM,
     icsPath:"calendars/offstage-shows.ics", calName:"OffStage · Shows",
     seed:true, extraTabs:{libres:true, marketing:true},
     officeSys:OFFICE_SYS, officeQuick:OFFICE_QUICK },
-  fbt:{ id:"fbt", prefix:"fbt__", name:"FBT", title:"TourDesk FBT", tag:"FBT · BY OFFSTAGE",
+  fbt:{ id:"fbt", prefix:"fbt__", name:"FBT", title:"TourDesk FBT", tag:"FBT · BY OFFSTAGE", code:"FBT",
     baseArtists:{}, baseRates:{}, crewRates:{}, baseTeam:[{id:"yo",name:"Yo",initials:"YO",color:"#F59E0B",bg:"#1a1405"}],
     icsPath:"calendars/fbt-shows.ics", calName:"FBT · Shows",
     seed:false, extraTabs:{},
@@ -1686,6 +1703,13 @@ const WORKSPACES={
 };
 var ACTIVE_WS=WORKSPACES.offstage; // se fija segun el usuario en el login (App)
 function setActiveWorkspace(wsId){ ACTIVE_WS=WORKSPACES[wsId]||WORKSPACES.offstage; CREW_RATES=(ACTIVE_WS.crewRates||{}); return ACTIVE_WS; }
+
+// ── ACCESO DE TRABAJADORES POR PIN ─────────────────────────────
+// Al agregar un trabajador se le genera un PIN; su código es CODE-PIN
+// (ej: FBT-4821). El trabajador entra con ese código y ve SOLO sus shows.
+function genPin(team){ var used={}; (Array.isArray(team)?team:[]).forEach(function(m){ if(m&&m.pin!=null) used[String(m.pin)]=1; }); for(var i=0;i<200;i++){ var p=String(1000+Math.floor(Math.random()*9000)); if(!used[p]) return p; } return String(1000+Math.floor(Math.random()*9000)); }
+function workerCode(wsId,pin){ var ws=WORKSPACES[wsId]||ACTIVE_WS||{}; return (ws.code||"TD")+"-"+pin; }
+function parseWorkerCode(raw){ var s=String(raw||"").toUpperCase().replace(/[^A-Z0-9]/g,""); var m=s.match(/^([A-Z]{1,6})(\d{3,6})$/); if(!m) return null; var wsId=null; for(var k in WORKSPACES){ if(String(WORKSPACES[k].code||"").toUpperCase()===m[1]){ wsId=k; break; } } return wsId?{wsId:wsId,pin:m[2]}:null; }
 
 // ── STATE MANAGER (outside React) ──────────────────────────
 let _currentUser = null;
@@ -1801,11 +1825,22 @@ function WorkerView({user, shows, onLogout}){
 }
 
 // ── LOGIN
-function LoginScreen(){
+function LoginScreen(props){
+  const onWorkerLogin=props&&props.onWorkerLogin;
+  const [mode,setMode]=React.useState("admin");
   const [email,setEmail]=React.useState("");
   const [pw,setPw]=React.useState("");
+  const [code,setCode]=React.useState("");
   const [err,setErr]=React.useState("");
   const [busy,setBusy]=React.useState(false);
+  const submitWorker=React.useCallback(function(){
+    if(busy) return;
+    if(!onWorkerLogin){ setErr("No disponible."); return; }
+    var c=code.trim();
+    if(!c){ setErr("Escribe tu código de acceso."); return; }
+    setBusy(true); setErr("");
+    onWorkerLogin(c).catch(function(ex){ setBusy(false); setErr((ex&&ex.message)||"No se pudo entrar."); });
+  },[code,busy,onWorkerLogin]);
 
   const submit=React.useCallback(()=>{
     if(busy) return;
@@ -1840,13 +1875,18 @@ function LoginScreen(){
         React.createElement("div",{style:{fontSize:7,letterSpacing:3,textTransform:"uppercase",color:"rgba(240,235,228,.25)",fontFamily:"DM Sans,sans-serif"}},"Tour Production · Worldwide")
       )
     ),
-    React.createElement("div",{style:{fontSize:9,color:"#E03A38",marginBottom:22,letterSpacing:3,textTransform:"uppercase",fontFamily:"DM Sans,sans-serif"}},"Inicia sesión"),
-    React.createElement("form",{onSubmit:function(ev){ev.preventDefault();submit();},style:{width:"100%",maxWidth:320,display:"flex",flexDirection:"column",gap:11}},
+    React.createElement("div",{style:{fontSize:9,color:"#E03A38",marginBottom:22,letterSpacing:3,textTransform:"uppercase",fontFamily:"DM Sans,sans-serif"}},mode==="worker"?"Acceso trabajador":"Inicia sesión"),
+    mode==="admin"?React.createElement("form",{onSubmit:function(ev){ev.preventDefault();submit();},style:{width:"100%",maxWidth:320,display:"flex",flexDirection:"column",gap:11}},
       React.createElement("input",{type:"email",inputMode:"email",autoCapitalize:"none",autoCorrect:"off",autoComplete:"username",value:email,onChange:function(e){setEmail(e.target.value);setErr("");},placeholder:"Email",style:inputStyle}),
       React.createElement("input",{type:"password",autoComplete:"current-password",value:pw,onChange:function(e){setPw(e.target.value);setErr("");},placeholder:"Contraseña",style:inputStyle}),
       React.createElement("div",{style:{fontSize:12,color:"#ef4444",fontWeight:600,minHeight:16,textAlign:"center"}},err),
       React.createElement("button",{type:"submit",disabled:busy,style:{width:"100%",padding:"14px",borderRadius:11,border:"none",background:busy?"#3a1414":"#E03A38",color:"#fff",fontWeight:700,fontSize:15,cursor:busy?"default":"pointer"}},busy?"Entrando…":"Entrar")
-    )
+    ):React.createElement("form",{onSubmit:function(ev){ev.preventDefault();submitWorker();},style:{width:"100%",maxWidth:320,display:"flex",flexDirection:"column",gap:11}},
+      React.createElement("input",{type:"text",autoCapitalize:"characters",autoCorrect:"off",value:code,onChange:function(e){setCode(e.target.value);setErr("");},placeholder:"Tu código (ej: FBT-4821)",style:Object.assign({},inputStyle,{textAlign:"center",letterSpacing:2,fontWeight:700})}),
+      React.createElement("div",{style:{fontSize:12,color:"#ef4444",fontWeight:600,minHeight:16,textAlign:"center"}},err),
+      React.createElement("button",{type:"submit",disabled:busy,style:{width:"100%",padding:"14px",borderRadius:11,border:"none",background:busy?"#3a1414":"#E03A38",color:"#fff",fontWeight:700,fontSize:15,cursor:busy?"default":"pointer"}},busy?"Entrando…":"Entrar")
+    ),
+    onWorkerLogin?React.createElement("button",{onClick:function(){setMode(mode==="admin"?"worker":"admin");setErr("");},style:{marginTop:18,background:"none",border:"none",color:"rgba(240,235,228,.45)",fontSize:12,cursor:"pointer",textDecoration:"underline",fontFamily:"DM Sans,sans-serif"}},mode==="admin"?"Soy trabajador →":"← Soy admin / manager"):null
   );
 }
 
@@ -2046,7 +2086,7 @@ function AdminApp({user, onLogout}){
     tab==="marketing"&&React.createElement(MktgPanel),
     tab==="office"&&React.createElement(OfficePanel),
     tab==="material"&&React.createElement(MaterialPanel,{cases,setCases}),
-    tab==="finance"&&canFinance&&React.createElement(FinancePanel,{finances,setFinances,shows,workers,setWorkers,setTeam}),
+    tab==="finance"&&canFinance&&React.createElement(FinancePanel,{finances,setFinances,shows,workers,setWorkers,setTeam,team}),
     tab==="stats"&&React.createElement(StatsPanel,{shows,conflicts})
   );
 }
@@ -2072,11 +2112,36 @@ function App(){
     return fbAuth.onAuthStateChanged(function(u){ setAuthUser(u||null); });
   },[]);
   const logout=React.useCallback(function(){ if(fbAuth) fbAuth.signOut(); },[]);
+  // Sesión de trabajador (por PIN, sin email)
+  const [worker,setWorker]=React.useState(function(){ try{ var w=JSON.parse(localStorage.getItem("td_worker")); return (w&&w.workspace&&w.memberId)?w:null; }catch(e){ return null; } });
+  const onWorkerLogin=React.useCallback(function(code){
+    var parsed=parseWorkerCode(code);
+    if(!parsed) return Promise.reject(new Error("Código no válido. Ejemplo: FBT-4821"));
+    if(!fbAuth||!fbDb) return Promise.reject(new Error("Sin conexión. Reintenta."));
+    return fbAuth.signInAnonymously().catch(function(ex){
+      var c=(ex&&ex.code)||"";
+      if(c.indexOf("operation-not-allowed")>=0) throw new Error("El acceso por PIN aún no está activado en el servidor. Avísale a Andrés.");
+      throw new Error("No se pudo conectar. Reintenta.");
+    }).then(function(){
+      var prefix=(WORKSPACES[parsed.wsId]||{}).prefix||"";
+      return fbDb.collection("tourdesk").doc(prefix+"td_team").get();
+    }).then(function(snap){
+      var teamArr=(snap.exists&&snap.data().data)||[];
+      var m=teamArr.find(function(x){return x&&String(x.pin)===String(parsed.pin);});
+      if(!m) throw new Error("Código no encontrado. Verifícalo con quien te lo dio.");
+      var prof={role:"worker",workspace:parsed.wsId,memberId:m.id,name:m.name||"Trabajador",initials:m.initials||"?",color:m.color||"#F59E0B",bg:m.bg||"#1a1405"};
+      try{ localStorage.setItem("td_worker",JSON.stringify(prof)); }catch(e){}
+      setWorker(prof);
+    });
+  },[]);
+  const workerLogout=React.useCallback(function(){ try{ localStorage.removeItem("td_worker"); }catch(e){} setWorker(null); try{ if(fbAuth&&fbAuth.currentUser&&fbAuth.currentUser.isAnonymous) fbAuth.signOut(); }catch(e){} },[]);
 
+  if(worker){ setActiveWorkspace(worker.workspace); return React.createElement(WorkerApp,{user:worker,onLogout:workerLogout}); }
   if(authUser===undefined){
     return React.createElement("div",{style:{height:"100dvh",display:"flex",alignItems:"center",justifyContent:"center",background:"#0a0a0a"}},React.createElement("div",{className:"spinner"}));
   }
-  if(!authUser) return React.createElement(LoginScreen);
+  if(!authUser) return React.createElement(LoginScreen,{onWorkerLogin:onWorkerLogin});
+  if(authUser.isAnonymous) return React.createElement(LoginScreen,{onWorkerLogin:onWorkerLogin});
 
   const profile=userForEmail(authUser.email);
   if(!profile){
